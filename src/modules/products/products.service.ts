@@ -808,18 +808,33 @@ export class ProductService {
         }
       }
 
-      // For new images: create fresh
-      const additionalNewImages = newImagesWithoutIds.map((imgInput, index) => {
-        const image = new ProductImage();
-        image.productId = productObjectId;
-        image.imageUrl = imgInput.url;
-        image.isThumbnail = imgInput.isThumbnail ?? false;
-        image.altText = imgInput.altText ?? '';
-        image.displayOrder =
-          imgInput.displayOrder ?? existingImagesToUpdate.length + index;
-        return image;
-      });
-
+      // For new images: create fresh, but only upload to Cloudflare if not already a Cloudflare URL
+      const additionalNewImages = await Promise.all(
+        newImagesWithoutIds.map(async (imgInput, index) => {
+          const image = new ProductImage();
+          image.productId = productObjectId;
+          // If imgInput.url is already a Cloudflare URL, use as is
+          if (imgInput.url && imgInput.url.includes('imagedelivery.net')) {
+            image.imageUrl = imgInput.url;
+          } else if (imgInput.file) {
+            // If file buffer provided, upload to Cloudflare
+            try {
+              const uploadResult = await this.cloudflareService.uploadImage(imgInput.file, imgInput.fileName || `product-img-${Date.now()}`);
+              image.imageUrl = uploadResult.variants?.[0] || uploadResult.id || '';
+            } catch (err) {
+              console.error('Cloudflare upload failed:', err);
+              image.imageUrl = imgInput.url || '';
+            }
+          } else {
+            image.imageUrl = imgInput.url || '';
+          }
+          image.isThumbnail = imgInput.isThumbnail ?? false;
+          image.altText = imgInput.altText ?? '';
+          image.displayOrder =
+            imgInput.displayOrder ?? existingImagesToUpdate.length + index;
+          return image;
+        })
+      );
       newImagesToCreate = [...newImagesToCreate, ...additionalNewImages];
 
       // Combine all images to save
@@ -1134,20 +1149,33 @@ export class ProductService {
         }
       }
 
-      // For new images: create fresh
-      const additionalNewImages = newImagesWithoutIds.map(
-        (imgInput: any, index: number) => {
+      // For new images: create fresh, but only upload to Cloudflare if not already a Cloudflare URL
+      const additionalNewImages = await Promise.all(
+        newImagesWithoutIds.map(async (imgInput: any, index: number) => {
           const image = new ProductImage();
           image.productId = savedProduct.id;
-          image.imageUrl = imgInput.url;
+          // If imgInput.url is already a Cloudflare URL, use as is
+          if (imgInput.url && imgInput.url.includes('imagedelivery.net')) {
+            image.imageUrl = imgInput.url;
+          } else if (imgInput.file) {
+            // If file buffer provided, upload to Cloudflare
+            try {
+              const uploadResult = await this.cloudflareService.uploadImage(imgInput.file, imgInput.fileName || `product-img-${Date.now()}`);
+              image.imageUrl = uploadResult.variants?.[0] || uploadResult.id || '';
+            } catch (err) {
+              console.error('Cloudflare upload failed:', err);
+              image.imageUrl = imgInput.url || '';
+            }
+          } else {
+            image.imageUrl = imgInput.url || '';
+          }
           image.isThumbnail = imgInput.isThumbnail ?? false;
           image.altText = imgInput.altText ?? '';
           image.displayOrder =
             imgInput.displayOrder ?? existingImagesToUpdate.length + index;
           return image;
-        },
+        })
       );
-
       newImagesToCreate = [...newImagesToCreate, ...additionalNewImages];
 
       // Combine all images to save
@@ -1583,20 +1611,33 @@ export class ProductService {
         }
       }
 
-      // For new images: create fresh
-      const additionalNewImages = newImagesWithoutIds.map(
-        (imgInput: any, index: number) => {
+      // For new images: create fresh, but only upload to Cloudflare if not already a Cloudflare URL
+      const additionalNewImages = await Promise.all(
+        newImagesWithoutIds.map(async (imgInput: any, index: number) => {
           const image = new ProductImage();
           image.productId = savedProduct.id;
-          image.imageUrl = imgInput.url;
+          // If imgInput.url is already a Cloudflare URL, use as is
+          if (imgInput.url && imgInput.url.includes('imagedelivery.net')) {
+            image.imageUrl = imgInput.url;
+          } else if (imgInput.file) {
+            // If file buffer provided, upload to Cloudflare
+            try {
+              const uploadResult = await this.cloudflareService.uploadImage(imgInput.file, imgInput.fileName || `product-img-${Date.now()}`);
+              image.imageUrl = uploadResult.variants?.[0] || uploadResult.id || '';
+            } catch (err) {
+              console.error('Cloudflare upload failed:', err);
+              image.imageUrl = imgInput.url || '';
+            }
+          } else {
+            image.imageUrl = imgInput.url || '';
+          }
           image.isThumbnail = imgInput.isThumbnail ?? false;
           image.altText = imgInput.altText ?? '';
           image.displayOrder =
             imgInput.displayOrder ?? existingImagesToUpdate.length + index;
           return image;
-        },
+        })
       );
-
       newImagesToCreate = [...newImagesToCreate, ...additionalNewImages];
 
       // Combine all images to save
