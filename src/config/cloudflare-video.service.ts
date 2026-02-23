@@ -18,6 +18,31 @@ interface CloudflareImageUploadResponse {
 
 @Injectable()
 export class CloudflareService {
+    /**
+     * Delete image from Cloudflare Images
+     */
+    async deleteImageFromCloudflare(imageIdOrUrl: string): Promise<void> {
+      try {
+        // If a full URL is provided, extract the image ID
+        let imageId = imageIdOrUrl;
+        if (imageIdOrUrl.startsWith('http')) {
+          // Example: https://imagedelivery.net/<account_hash>/<image_id>/public
+          const parts = imageIdOrUrl.split('/');
+          imageId = parts[parts.length - 2];
+        }
+        const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/images/v1/${imageId}`;
+        const response = await this.http.delete(url, {
+          headers: {
+            Authorization: `Bearer ${this.imageToken}`,
+          },
+        });
+        if (!response.data?.success) {
+          throw new InternalServerErrorException('Cloudflare image delete failed');
+        }
+      } catch (error: unknown) {
+        throw this.handleAxiosError(error, 'Cloudflare image delete failed');
+      }
+    }
   private readonly accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   private readonly imageToken = process.env.CLOUDFLARE_IMAGES_API_TOKEN;
   private readonly http: AxiosInstance = axios;

@@ -34,6 +34,7 @@ export class ProductService {
     @InjectRepository(ProductCare)
     private readonly productCareRepository: Repository<ProductCare>,
     private readonly dataSource: DataSource,
+    private readonly cloudflareService: import('../../config/cloudflare-video.service').CloudflareService,
   ) {}
 
   private generateRandomAlphaNum(length = 6) {
@@ -822,23 +823,43 @@ export class ProductService {
       const allImagesToSave = [...existingImagesToUpdate, ...newImagesToCreate];
 
       // Delete images that are not in the input (but respect keepImageIds if provided)
+      let deletedImages: ProductImage[] = [];
       if (keepImageIds.length > 0) {
-        // Delete images not in keepImageIds AND not in our new images list
+        // Find images to delete
         const keepObjectIds = keepImageIds.map((id) => new ObjectId(id));
         const imageIdsToKeep = [
           ...keepObjectIds,
-          ...newImagesToCreate.map((img) => img.id).filter((id) => id), // Newly created image IDs
+          ...newImagesToCreate.map((img) => img.id).filter((id) => id),
         ];
-
+        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+          where: {
+            productId: productObjectId,
+            _id: { $nin: imageIdsToKeep },
+          } as any,
+        });
         await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
           productId: productObjectId,
           _id: { $nin: imageIdsToKeep },
         } as any);
       } else {
         // If no keepImageIds provided, delete all existing images and recreate
+        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+          where: { productId: productObjectId } as any,
+        });
         await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
           productId: productObjectId,
         });
+      }
+
+      // Remove from Cloudflare
+      for (const img of deletedImages) {
+        if (img.imageUrl) {
+          try {
+            await this.cloudflareService.deleteImageFromCloudflare(img.imageUrl);
+          } catch (err) {
+            console.error('Cloudflare image delete failed:', err);
+          }
+        }
       }
 
       // Save all images
@@ -1130,20 +1151,41 @@ export class ProductService {
       const allImagesToSave = [...existingImagesToUpdate, ...newImagesToCreate];
 
       // Delete images that are not in the input (but respect keepImageIds if provided)
+      let deletedImages: ProductImage[] = [];
       if (keepImageIds.length > 0) {
         const keepObjectIds = keepImageIds.map((id) => new ObjectId(id));
         const imageIdsToKeep = [
           ...keepObjectIds,
           ...newImagesToCreate.map((img) => img.id).filter((id) => id),
         ];
+        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+          where: {
+            productId: savedProduct.id,
+            _id: { $nin: imageIdsToKeep },
+          } as any,
+        });
         await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
           productId: savedProduct.id,
           _id: { $nin: imageIdsToKeep },
         } as any);
       } else {
+        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+          where: { productId: savedProduct.id } as any,
+        });
         await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
           productId: savedProduct.id,
         });
+      }
+
+      // Remove from Cloudflare
+      for (const img of deletedImages) {
+        if (img.imageUrl) {
+          try {
+            await this.cloudflareService.deleteImageFromCloudflare(img.imageUrl);
+          } catch (err) {
+            console.error('Cloudflare image delete failed:', err);
+          }
+        }
       }
 
       if (allImagesToSave.length > 0) {
@@ -1558,21 +1600,41 @@ export class ProductService {
       const allImagesToSave = [...existingImagesToUpdate, ...newImagesToCreate];
 
       // Delete images that are not in the input (but respect keepImageIds if provided)
+      let deletedImages: ProductImage[] = [];
       if (keepImageIds.length > 0) {
         const keepObjectIds = keepImageIds.map((id) => new ObjectId(id));
         const imageIdsToKeep = [
           ...keepObjectIds,
           ...newImagesToCreate.map((img) => img.id).filter((id) => id),
         ];
+        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+          where: {
+            productId: savedProduct.id,
+            _id: { $nin: imageIdsToKeep },
+          } as any,
+        });
         await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
           productId: savedProduct.id,
           _id: { $nin: imageIdsToKeep },
         } as any);
       } else {
-        // If no keepImageIds provided, delete all existing images and recreate
+        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+          where: { productId: savedProduct.id } as any,
+        });
         await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
           productId: savedProduct.id,
         });
+      }
+
+      // Remove from Cloudflare
+      for (const img of deletedImages) {
+        if (img.imageUrl) {
+          try {
+            await this.cloudflareService.deleteImageFromCloudflare(img.imageUrl);
+          } catch (err) {
+            console.error('Cloudflare image delete failed:', err);
+          }
+        }
       }
 
       // Save all images
