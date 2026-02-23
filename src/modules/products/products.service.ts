@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
@@ -25,6 +26,7 @@ import { ProductSpecification } from './entities/product-specification.entity';
 import { ProductCare } from './entities/product.care.entity';
 import { Category } from '../categories/entities/category.entity';
 import { Brand } from '../brands/entities/brand.entity';
+import { CloudflareService } from 'src/config/cloudflare-video.service';
 
 @Injectable()
 export class ProductService {
@@ -34,7 +36,8 @@ export class ProductService {
     @InjectRepository(ProductCare)
     private readonly productCareRepository: Repository<ProductCare>,
     private readonly dataSource: DataSource,
-    private readonly cloudflareService: import('../../config/cloudflare-video.service').CloudflareService,
+    @Inject(CloudflareService)
+    private readonly cloudflareService: CloudflareService,
   ) {}
 
   private generateRandomAlphaNum(length = 6) {
@@ -2067,10 +2070,24 @@ export class ProductService {
     await this.dataSource
       .getMongoRepository(ProductColor)
       .deleteMany({ productId: new ObjectId(id) });
-    // Images
+
+    // Images: delete from Cloudflare first
+    const images = await this.dataSource
+      .getMongoRepository(ProductImage)
+      .find({ where: { productId: new ObjectId(id) } });
+    for (const img of images) {
+      if (img.imageUrl) {
+        try {
+          await this.cloudflareService.deleteImageFromCloudflare(img.imageUrl);
+        } catch (err) {
+          console.error('Cloudflare image delete failed:', err);
+        }
+      }
+    }
     await this.dataSource
       .getMongoRepository(ProductImage)
       .deleteMany({ productId: new ObjectId(id) });
+
     // Videos
     await this.dataSource
       .getMongoRepository(ProductVideo)
