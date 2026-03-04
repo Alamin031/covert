@@ -266,6 +266,14 @@ export class CreateBasicProductDto {
   @IsArray()
   @IsString({ each: true })
   colors?: string[];
+
+    @ApiPropertyOptional({
+      description: 'Client SEO related HTML code',
+      example: '<script type="application/ld+json">{...}</script>',
+    })
+    @IsOptional()
+    @IsString()
+    schemaCode?: string;
 }
 
 // ==================== Network Product DTO ====================
@@ -749,6 +757,14 @@ export class UpdateProductNewDto extends PartialType(CreateBasicProductDto) {
   @IsArray()
   @IsString({ each: true })
   colors?: string[];
+
+    @ApiPropertyOptional({
+      description: 'Client SEO related HTML code',
+      example: '<script type="application/ld+json">{...}</script>',
+    })
+    @IsOptional()
+    @IsString()
+    schemaCode?: string;
 }
 
 // Adding CreateNetworkProductDto

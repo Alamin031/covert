@@ -166,4 +166,8 @@ export class Product {
 
   @Column({ nullable: true })
   faqIds?: ObjectId[];
+  
+    // Field for client SEO-related HTML code
+    @Column({ nullable: true, type: 'string' })
+    schemaCode?: string;
 }

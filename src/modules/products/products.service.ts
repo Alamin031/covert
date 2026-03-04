@@ -152,6 +152,11 @@ export class ProductService {
       const product = new Product();
       Object.assign(product, createProductDto);
 
+        // Ensure schemaCode is set if provided
+        if (typeof createProductDto.schemaCode !== 'undefined') {
+          product.schemaCode = createProductDto.schemaCode;
+        }
+
       if (typeof createProductDto.ratingPoint !== 'undefined') {
         product.ratingPoint = createProductDto.ratingPoint;
       }
@@ -304,6 +309,11 @@ export class ProductService {
       // 1. Create Product
       const product = new Product();
       Object.assign(product, createProductDto);
+
+        // Ensure schemacode is set if provided
+        if (typeof createProductDto.schemaCode !== 'undefined') {
+          product.schemaCode = createProductDto.schemaCode;
+        }
       // serial and imei fields removed from Product entity
       // Ensure ratingPoint is set if provided
       if (typeof createProductDto.ratingPoint !== 'undefined') {
@@ -718,6 +728,11 @@ export class ProductService {
       });
 
       if (!product) throw new NotFoundException('Product not found');
+
+      // Ensure schemacode is set if provided
+      if (typeof updateProductDto.schemaCode !== 'undefined') {
+        product.schemaCode = updateProductDto.schemaCode;
+      }
       if (product.productType !== 'basic')
         throw new BadRequestException('Product is not basic');
 
@@ -965,6 +980,11 @@ export class ProductService {
 
       // 2. Update Product
       Object.assign(product, updateProductDto);
+
+        // Ensure schemaCode is set if provided
+        if (typeof updateProductDto.schemaCode !== 'undefined') {
+          product.schemaCode = updateProductDto.schemaCode;
+        }
       // serial and imei fields removed from Product entity
       // Ensure ratingPoint is set if provided
       if (typeof updateProductDto.ratingPoint !== 'undefined') {
@@ -2498,6 +2518,7 @@ export class ProductService {
       isPos: product.isPos,
       isPreOrder: product.isPreOrder,
       isOfficial: product.isOfficial,
+      schemaCode: product.schemaCode,
       freeShipping: product.freeShipping,
       isEmi: product.isEmi,
       isCare: product.isCare,
