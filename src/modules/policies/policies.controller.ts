@@ -12,8 +12,9 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PoliciesService } from './policies.service';
 import { CreatePolicyDto, UpdatePolicyDto } from './dto/policy.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @ApiTags('policies')
 @Controller('policies')
@@ -21,8 +22,8 @@ export class PoliciesController {
   constructor(private readonly policiesService: PoliciesService) { }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_POLICY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create policy (Admin only)' })
   async create(@Body() dto: CreatePolicyDto) {
@@ -54,8 +55,8 @@ export class PoliciesController {
 
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_POLICY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update policy (Admin only)' })
   async update(@Param('id') id: string, @Body() dto: UpdatePolicyDto) {
@@ -65,8 +66,8 @@ export class PoliciesController {
 
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_POLICY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete policy (Admin only)' })
   async remove(@Param('id') id: string) {

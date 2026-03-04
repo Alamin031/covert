@@ -1,8 +1,9 @@
 import { Controller, Get, Post, Body, Param, Patch, Delete, UploadedFiles, UseGuards, InternalServerErrorException } from '@nestjs/common';
 import { FileFieldsUpload, UploadType } from '../../common/decorators/file-upload.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { CloudflareService } from 'src/config/cloudflare-video.service';
@@ -17,8 +18,8 @@ export class FlashsellController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_FLASHSELL)
   @FileFieldsUpload(
     [{ name: 'bannerImg', maxCount: 1 }],
     undefined,
@@ -60,8 +61,8 @@ export class FlashsellController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_FLASHSELL)
   @FileFieldsUpload(
     [{ name: 'bannerImg', maxCount: 1 }],
     undefined,
@@ -94,6 +95,8 @@ export class FlashsellController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_FLASHSELL)
   async remove(@Param('id') id: string) {
     return await this.flashsellService.remove(id);
   }

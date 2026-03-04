@@ -12,8 +12,9 @@ import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/review.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @ApiTags('reviews')
 @Controller('reviews')
@@ -43,8 +44,8 @@ export class ReviewsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_REVIEW)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete review (Admin only)' })
   remove(@Param('id') id: string) {

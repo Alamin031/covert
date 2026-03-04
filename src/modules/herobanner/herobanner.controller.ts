@@ -22,8 +22,9 @@ import {
 } from '../../common/decorators/file-upload.decorator';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { CloudflareService } from 'src/config/cloudflare-video.service';
@@ -34,8 +35,8 @@ import { CloudflareService } from 'src/config/cloudflare-video.service';
 export class HerobannerController {
   // BottomBanner Endpoints
   @Post('bottom')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_HEROBANNER)
   @FileFieldsUpload(
     [{ name: 'img', maxCount: 10 }],
     undefined,
@@ -78,8 +79,8 @@ export class HerobannerController {
   }
 
   @Patch('bottom/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_HEROBANNER)
   @FileUpload('img', 1, { storage: memoryStorage() }, UploadType.IMAGE)
   async updateBottom(
     @Param('id') id: string,
@@ -109,16 +110,16 @@ export class HerobannerController {
   }
 
   @Delete('bottom/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_HEROBANNER)
   async removeBottom(@Param('id') id: string) {
     return await this.herobannerService.removeBottomBanner(id);
   }
 
   // MiddleBanner Endpoints
   @Post('middle')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_HEROBANNER)
   @FileFieldsUpload(
     [{ name: 'img', maxCount: 10 }],
     undefined,
@@ -161,8 +162,8 @@ export class HerobannerController {
   }
 
   @Patch('middle/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_HEROBANNER)
   @FileUpload('img', 1, { storage: memoryStorage() }, UploadType.IMAGE)
   async updateMiddle(
     @Param('id') id: string,
@@ -192,8 +193,8 @@ export class HerobannerController {
   }
 
   @Delete('middle/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_HEROBANNER)
   async removeMiddle(@Param('id') id: string) {
     return await this.herobannerService.removeMiddleBanner(id);
   }
@@ -203,8 +204,8 @@ export class HerobannerController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_HEROBANNER)
   @FileFieldsUpload(
     [{ name: 'img', maxCount: 10 }],
     undefined,
@@ -261,8 +262,8 @@ export class HerobannerController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_HEROBANNER)
   @FileUpload('img', 1, { storage: memoryStorage() }, UploadType.IMAGE)
   async update(
     @Param('id') id: string,
@@ -290,16 +291,16 @@ export class HerobannerController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_HEROBANNER)
   async remove(@Param('id') id: string) {
     return await this.herobannerService.remove(id);
   }
 
   // GiveBanner Endpoints
   @Post('give')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_HEROBANNER)
   @FileFieldsUpload(
     [{ name: 'img', maxCount: 10 }],
     undefined,
@@ -336,8 +337,8 @@ export class HerobannerController {
   }
 
   @Patch('give/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_HEROBANNER)
   @FileUpload('img', 1, { storage: memoryStorage() }, UploadType.IMAGE)
   async updateGive(
     @Param('id') id: string,
@@ -367,8 +368,8 @@ export class HerobannerController {
   }
 
   @Delete('give/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_HEROBANNER)
   async removeGive(@Param('id') id: string) {
     return await this.herobannerService.removeGiveBanner(id);
   }

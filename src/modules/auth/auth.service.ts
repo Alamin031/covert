@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
+import { Role } from '../roles/role.entity';
 import { RegisterDto } from './dto/register.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { Repository, DeepPartial } from 'typeorm';
@@ -20,6 +21,7 @@ interface AuthUser {
   name: string;
   role: string;
   image?: string | null;
+  permissions?: string[];
 }
 @Injectable()
 export class AuthService {
@@ -27,6 +29,8 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepo: Repository<Role>,
   ) { }
 
 
@@ -49,17 +53,28 @@ export class AuthService {
       email: dto.email,
       name: dto.name,
       password: hashedPassword,
-      role: 'user',
       isAdmin: false,
     };
+    // attach roleId and role name if a `user` role exists
+    const userRole = await this.roleRepo.findOne({ where: { name: 'user' } });
+    if (userRole) {
+      user.roleId = userRole.id;
+      (user as any).role = userRole.name;
+    } else {
+      (user as any).role = 'user';
+    }
     const savedUser = await this.userRepo.save(this.userRepo.create(user));
 
+    // resolve role name and permissions for response (do not persist on user)
+    const roleName = userRole?.name ?? 'user';
+    const permissions = userRole?.permissions ?? [];
     return this.login({
       id: savedUser.id?.toString?.() ?? String(savedUser.id),
       email: savedUser.email,
       name: savedUser.name,
-      role: savedUser.role,
+      role: roleName,
       image: savedUser.image ?? undefined,
+      permissions,
     });
   }
 
@@ -74,16 +89,27 @@ export class AuthService {
       email: dto.email,
       name: dto.name,
       password: hashedPassword,
-      role: dto.role || 'admin',
       isAdmin: true,
     };
+    const roleName = dto.role || 'admin';
+    const roleEntity = await this.roleRepo.findOne({ where: { name: roleName } });
+    if (!roleEntity) {
+      throw new BadRequestException(`Role "${roleName}" does not exist`);
+    }
+
+    user.roleId = roleEntity.id;
+    (user as any).role = roleEntity.name;
     const savedUser = await this.userRepo.save(this.userRepo.create(user));
+
+    const resolvedRoleName = roleEntity.name;
+    const resolvedPermissions = roleEntity.permissions ?? [];
     return this.login({
       id: savedUser.id?.toString?.() ?? String(savedUser.id),
       email: savedUser.email,
       name: savedUser.name,
-      role: savedUser.role,
+      role: resolvedRoleName,
       image: savedUser.image ?? undefined,
+      permissions: resolvedPermissions,
     });
   }
 
@@ -101,7 +127,8 @@ export class AuthService {
 
   async login(user: AuthUser) {
     const id = user.id?.toString?.() ?? String(user.id);
-    const payload = { sub: id, email: user.email, role: user.role };
+    const payload: any = { sub: id, email: user.email, role: user.role };
+    if (user.permissions) payload.permissions = user.permissions;
     return {
       access_token: this.jwtService.sign(payload),
       user: {
@@ -117,19 +144,33 @@ export class AuthService {
   async loginWithCredentials(email: string, password: string) {
     const valid = await this.validateUser(email, password);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
-    return this.login({ ...valid, id: valid.id?.toString?.() ?? String(valid.id) });
+    // resolve role/permissions for token payload using persisted role name
+    let roleName = (valid as any).role ?? 'user';
+    let permissions: string[] = [];
+    if (roleName) {
+      const role = await this.roleRepo.findOne({ where: { name: roleName } as any } as any);
+      permissions = role?.permissions ?? [];
+    } else if ((valid as any).roleId) {
+      const role = await this.roleRepo.findOne({ where: { id: (valid as any).roleId } as any } as any);
+      roleName = role?.name ?? roleName;
+      permissions = role?.permissions ?? [];
+    }
+    return this.login({ ...valid as any, id: valid.id?.toString?.() ?? String(valid.id), role: roleName, permissions });
   }
 
   async socialLogin(dto: SocialLoginDto) {
     let user = await this.userRepo.findOne({ where: { email: dto.email } });
+    let userRole = null as Role | null;
 
     if (!user) {
+      userRole = await this.roleRepo.findOne({ where: { name: 'user' } });
       const newUser: DeepPartial<User> = {
         email: dto.email,
         name: dto.name,
         image: dto.avatar ?? undefined,
-        role: 'user',
         isAdmin: false,
+        role: userRole?.name ?? 'user',
+        ...(userRole && { roleId: userRole.id }),
       };
       user = await this.userRepo.save(this.userRepo.create(newUser));
     }
@@ -137,11 +178,12 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('User creation failed');
 
     const authUser: AuthUser = {
-	  id: user.id?.toString?.() ?? String(user.id),
+      id: user.id?.toString?.() ?? String(user.id),
       email: user.email,
       name: user.name,
-      role: user.role,
+      role: user.role ?? (userRole?.name ?? 'user'),
       image: user.image ?? undefined,
+      permissions: userRole?.permissions ?? [],
     };
     return this.login(authUser);
   }

@@ -14,8 +14,9 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { FaqsService } from './faqs.service';
 import { CreateFaqDto, UpdateFaqDto } from './dto/faq.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @ApiTags('faqs')
 @Controller('faqs')
@@ -23,8 +24,8 @@ export class FaqsController {
   constructor(private readonly faqsService: FaqsService) { }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_FAQ)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create FAQ (Admin/Management)' })
   async create(@Body() dto: CreateFaqDto) {
@@ -60,8 +61,8 @@ export class FaqsController {
     };
   }
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_FAQ)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update FAQ (Admin/Management)' })
   async update(@Param('id') id: string, @Body() dto: UpdateFaqDto) {
@@ -77,8 +78,8 @@ export class FaqsController {
   
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_FAQ)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete FAQ (Admin only)' })
   remove(@Param('id') id: string) {

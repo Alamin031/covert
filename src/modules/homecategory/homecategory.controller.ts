@@ -1,8 +1,9 @@
 
 import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 import { HomecategoryService } from './homecategory.service';
 import { CreateHomeCategoryDto, UpdateHomeCategoryDto } from './dto/homecategory.dto';
 
@@ -11,8 +12,8 @@ export class HomecategoryController {
     constructor(private readonly homecategoryService: HomecategoryService) { }
 
     @Post()
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'management')
+    @UseGuards(JwtAuthGuard, PermissionsGuard)
+    @Permissions(Permission.CREATE_HOME_CATEGORY)
     async create(@Body() body: CreateHomeCategoryDto) {
         const homeCategory = await this.homecategoryService.create({
             name: body.name,
@@ -36,8 +37,8 @@ export class HomecategoryController {
     }
 
     @Patch(':id')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'management')
+    @UseGuards(JwtAuthGuard, PermissionsGuard)
+    @Permissions(Permission.UPDATE_HOME_CATEGORY)
     async update(
         @Param('id') id: string,
         @Body() body: UpdateHomeCategoryDto
@@ -52,8 +53,8 @@ export class HomecategoryController {
     }
 
     @Delete(':id')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'management')
+    @UseGuards(JwtAuthGuard, PermissionsGuard)
+    @Permissions(Permission.DELETE_HOME_CATEGORY)
     async remove(@Param('id') id: string) {
         return await this.homecategoryService.remove(id);
     }

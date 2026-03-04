@@ -24,8 +24,9 @@ import {
   CategoryFilterDto,
 } from './dto/category.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @ApiTags('categories')
 @Controller('categories')
@@ -62,8 +63,8 @@ export class CategoriesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_CATEGORY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create category (Admin only)' })
   @FileFieldsUpload(
@@ -140,8 +141,8 @@ export class CategoriesController {
     return this.categoriesService.findProducts(slug, filters);
   }
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_CATEGORY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update category (Admin only)' })
   @FileFieldsUpload(
@@ -180,8 +181,8 @@ export class CategoriesController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_CATEGORY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete category (Admin only)' })
   remove(@Param('id') id: string) {
@@ -191,8 +192,8 @@ export class CategoriesController {
   // SUBCATEGORY ENDPOINTS
 
   @Post(':categoryId/subcategories')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_CATEGORY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create subcategory (Admin only)' })
   async createSubcategory(
@@ -204,8 +205,8 @@ export class CategoriesController {
   }
 
   @Patch('subcategories/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_CATEGORY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update subcategory (Admin only)' })
   async updateSubcategory(

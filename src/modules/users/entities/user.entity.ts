@@ -24,13 +24,15 @@ export class User {
     password?: string;
 
 
+    @Column({ nullable: true })
+    roleId?: ObjectId;
+
     @Column({ default: 'user' })
     role: string;
 
 
     @Column({ default: false })
     isAdmin: boolean;
-
 
     @Column({ nullable: true })
     image?: string;

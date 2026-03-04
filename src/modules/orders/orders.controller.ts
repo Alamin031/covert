@@ -16,8 +16,9 @@ import {
 } from './dto/order.dto';
 import { AssignOrderItemUnitsDto } from './dto/assign-units.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -45,8 +46,8 @@ export class OrdersController {
   }
 
   @Get()
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.READ_ORDER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all orders (Admin/Management)' })
   async findAll() {
@@ -84,8 +85,8 @@ export class OrdersController {
   }
 
   @Patch(':id/status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_ORDER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update order status (Admin/Management)' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
@@ -93,8 +94,8 @@ export class OrdersController {
   }
 
   @Post('admin/:id/assign-units')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'management')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_ORDER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Assign IMEI/Serial units to order items (Admin)' })
   async assignUnits(

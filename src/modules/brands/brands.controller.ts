@@ -17,8 +17,9 @@ import { CreateBrandDto, UpdateBrandDto } from './dto/brand.dto';
 import { FileFieldsUpload, UploadType } from '../../common/decorators/file-upload.decorator';
 import { CloudflareService } from '../../config/cloudflare-video.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @ApiTags('brands')
 @Controller('brands')
@@ -29,8 +30,8 @@ export class BrandsController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_BRAND)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create brand (Admin only)' })
   @FileFieldsUpload(
@@ -96,8 +97,8 @@ export class BrandsController {
     return this.brandsService.findProducts(slug);
   }
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_BRAND)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update brand (Admin only)' })
   @FileFieldsUpload(
@@ -136,8 +137,8 @@ export class BrandsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_BRAND)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete brand (Admin only)' })
   remove(@Param('id') id: string) {

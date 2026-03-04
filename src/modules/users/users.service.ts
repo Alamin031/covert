@@ -11,6 +11,7 @@ import { ObjectId } from 'mongodb';
 
 import { CreateUserDto } from './dto/user.dto';
 import { User } from './entities/user.entity';
+import { Role } from '../roles/role.entity';
 import { Wishlist } from './entities/wishlist.entity';
 import { Compare } from './entities/compare.entity';
 import { Order } from '../orders/entities/order.entity';
@@ -20,6 +21,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
 
     @InjectRepository(Wishlist)
     private readonly wishlistRepository: Repository<Wishlist>,
@@ -57,13 +60,13 @@ export class UsersService {
     }
 
     const name = dto.name ?? dto.email.split('@')[0];
-    const role: string = typeof dto.role === 'string' ? dto.role : 'user';
+    const roleName: string = typeof dto.role === 'string' ? dto.role : 'user';
 
-    if (!['user', 'admin', 'management'].includes(role)) {
+    if (!['user', 'admin', 'management'].includes(roleName)) {
       throw new BadRequestException('Invalid role');
     }
 
-    const isAdmin: boolean = role === 'admin';
+    const isAdmin: boolean = roleName === 'admin';
 
     let password: string | undefined;
     if (dto.password?.length) {
@@ -73,10 +76,18 @@ export class UsersService {
     const user = this.userRepository.create({
       email: dto.email,
       name,
-      role,
       isAdmin,
       ...(password && { password }),
     });
+
+    // attach roleId if role exists
+    const roleEntity = await this.roleRepository.findOne({ where: { name: roleName } as any } as any);
+    if (roleEntity) {
+      (user as any).roleId = roleEntity.id;
+      (user as any).role = roleEntity.name;
+    } else {
+      (user as any).role = roleName;
+    }
 
     const saved = await this.userRepository.save(user);
     return this.sanitize(saved);
@@ -87,7 +98,14 @@ export class UsersService {
   // ==========================
   async findAll() {
     const users = await this.userRepository.find();
-    return users.map((u) => this.sanitize(u));
+    const hydrated = await Promise.all(
+      users.map(async (u) => {
+        const { password, ...rest } = u as any;
+        const roleEntity = await this.roleRepository.findOne({ where: { id: (u as any).roleId } as any } as any);
+            return { ...rest, role: roleEntity?.name ?? rest.role };
+      }),
+    );
+    return hydrated;
   }
 
   // ==========================
@@ -103,7 +121,9 @@ export class UsersService {
     } as any);
 
     if (!user) throw new NotFoundException('User not found');
-    return this.sanitize(user);
+    const { password, ...rest } = user as any;
+    const roleEntity = await this.roleRepository.findOne({ where: { id: (user as any).roleId } as any } as any);
+    return { ...rest, role: roleEntity?.name ?? rest.role };
   }
 
 
@@ -140,6 +160,10 @@ export class UsersService {
 
     if (!user) throw new NotFoundException('User not found');
 
+    // update roleId based on role name
+    const roleEntity = await this.roleRepository.findOne({ where: { name: role } as any } as any);
+    if (!roleEntity) throw new BadRequestException('Invalid role');
+    (user as any).roleId = roleEntity.id;
     user.role = role;
     user.isAdmin = role === 'admin';
 

@@ -26,8 +26,9 @@ import {
   CreateRegionProductDto 
 } from './dto/create-product-new.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 import { FileFieldsUpload, UploadType } from '../../common/decorators/file-upload.decorator';
 import { CloudflareService } from '../../config/cloudflare-video.service';
 import { ProductService } from './products.service';
@@ -41,9 +42,9 @@ export class ProductsController {
   ) {}
 
   @Post('basic')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin', 'management')
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_PRODUCT)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create basic product with variants, pricing, images, and specs',
     description: 'Create a simple product with direct color variants',
@@ -68,9 +69,9 @@ export class ProductsController {
   }
 
   @Post('network')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin', 'management')
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_PRODUCT)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create network-based product',
     description: 'Create a product with network variants (e.g. WiFi, Cellular)',
@@ -94,9 +95,9 @@ export class ProductsController {
   }
 
   @Post('region')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin', 'management')
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_PRODUCT)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create region-based product',
     description: 'Create a product with regional variants (e.g. International, USA)',
@@ -120,9 +121,9 @@ export class ProductsController {
   }
 
   @Patch('basic/:id')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin', 'management')
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_PRODUCT)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update basic product',
     description: 'Update an existing basic product with variants, pricing, images, and specs',
@@ -148,9 +149,9 @@ export class ProductsController {
   }
 
   @Patch('network/:id')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin', 'management')
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_PRODUCT)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update network-based product',
     description: 'Update an existing network-based product',
@@ -176,9 +177,9 @@ export class ProductsController {
   }
 
   @Patch('region/:id')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin', 'management')
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_PRODUCT)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update region-based product',
     description: 'Update an existing region-based product',
@@ -440,9 +441,9 @@ findAll(
   // IMPORTANT: Must be before :slug route to avoid "care" being treated as a slug
 
   @Post('care')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin', 'management')
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_PRODUCT)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create product care plan' })
   @ApiResponse({ status: 201, description: 'Care plan created successfully' })
   createCare(
@@ -460,9 +461,9 @@ findAll(
   }
 
   @Patch('care/:id')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin', 'management')
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_PRODUCT)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update product care plan' })
   @ApiResponse({ status: 200, description: 'Care plan updated successfully' })
   updateCare(
@@ -503,9 +504,9 @@ findAll(
   }
 
   @Delete('care/:id')
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles('admin')
-  // @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_PRODUCT)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete product care plan' })
   @ApiResponse({ status: 200, description: 'Care plan deleted successfully' })
   @ApiResponse({ status: 404, description: 'Care plan not found' })
@@ -560,8 +561,8 @@ findAll(
   }
 
   @Delete('delete/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_PRODUCT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Soft delete product (Admin only)' })
   @ApiResponse({

@@ -3,8 +3,9 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { GiveawaysService } from './giveaways.service';
 import { CreateGiveawayEntryDto } from './dto/giveaway.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @ApiTags('giveaways')
 @Controller('giveaways')
@@ -22,8 +23,8 @@ export class GiveawaysController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.READ_GIVEAWAY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all entries (Admin only)' })
   async findAll() {
@@ -35,8 +36,8 @@ export class GiveawaysController {
   }
 
   @Get('export')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.READ_GIVEAWAY)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Export entries (Admin only)' })
   export() {

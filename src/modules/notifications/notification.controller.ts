@@ -7,6 +7,9 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationReadDto } from './dto/update-notification-read.dto';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @Controller('notifications')
 
@@ -105,6 +108,8 @@ export class NotificationController {
 
   // POST /notifications - Create new notification (admin or system)
   @Post()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_NOTIFICATION)
   async create(@Body() createNotificationDto: CreateNotificationDto) {
     const notification = await this.notificationService.create(createNotificationDto);
     return {
@@ -116,6 +121,8 @@ export class NotificationController {
 
   // PATCH /notifications/:id/read - Mark notification as read
   @Patch(':id/read')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.MARK_NOTIFICATION_READ)
   async markAsRead(@Param('id') id: string) {
     const notification = await this.notificationService.markAsRead(id);
     return {
@@ -126,7 +133,8 @@ export class NotificationController {
 
   // POST /notifications/stock-out - Create stock out notification (productId in body, user from @CurrentUser)
   @Post('stock-out')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_NOTIFICATION)
   async createStockOutNotification(
     @Body() body: { productId?: string },
     @CurrentUser() user: User,
@@ -142,6 +150,8 @@ export class NotificationController {
 
   // DELETE /notifications/:id - Delete notification
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_NOTIFICATION)
   async remove(@Param('id') id: string) {
     return this.notificationService.remove(id);
   }

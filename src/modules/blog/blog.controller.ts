@@ -18,6 +18,10 @@ import {
 } from '../../common/decorators/file-upload.decorator';
 import { CloudflareService } from 'src/config/cloudflare-video.service';
 import { UploadedFiles } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @Controller('blogs')
 export class BlogController {
@@ -48,10 +52,8 @@ export class BlogController {
   }
 
   @Post()
-  @UseGuards(/*JwtAuthGuard,*/
-  /*RolesGuard*/)
-  // Uncomment JwtAuthGuard and RolesGuard as needed
-  // @Roles('admin', 'editor') // Uncomment and adjust roles as needed
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.CREATE_BLOG)
   @FileFieldsUpload(
     [{ name: 'image', maxCount: 1 }],
     undefined,
@@ -79,7 +81,8 @@ export class BlogController {
   }
 
   @Put(':id')
-  // @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.UPDATE_BLOG)
   @FileFieldsUpload(
     [{ name: 'image', maxCount: 1 }],
     undefined,
@@ -107,7 +110,8 @@ export class BlogController {
   }
 
   @Delete(':id')
-  // @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.DELETE_BLOG)
   async remove(@Param('id') id: string) {
     return this.blogService.remove(id);
   }

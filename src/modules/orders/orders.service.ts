@@ -292,73 +292,7 @@ export class OrdersService {
     return savedOrder;
   }
 
-  async assignUnits(orderId: string, dto: AssignOrderItemUnitsDto[]) {
-    console.log('[Orders] assignUnits called', { orderId, items: dto?.length ?? 0 });
-    for (const item of dto) {
-      // Validate orderItemId before converting to ObjectId
-      let orderItem: OrderItem | null = null as any;
-      try {
-        if (typeof item.orderItemId === 'string' && ObjectId.isValid(item.orderItemId)) {
-          orderItem = await this.orderItemRepository.findOne({
-            where: { id: new ObjectId(item.orderItemId) } as any,
-          });
-        } else if (typeof item.orderItemId === 'string') {
-          // Support client temporary ids like `item-0` by mapping to saved order items by index
-          const idxMatch = /^item-(\d+)$/.exec(item.orderItemId);
-          if (idxMatch) {
-            const idx = parseInt(idxMatch[1], 10);
-            const savedItems = await this.orderItemRepository.find({ where: { orderId: String(orderId) } });
-            if (Array.isArray(savedItems) && savedItems.length > idx) {
-              orderItem = savedItems[idx] as any;
-              if (!orderItem) {
-                console.warn('[Orders] assignUnits: mapped temp id but orderItem is null', { orderItemId: item.orderItemId, orderId });
-                continue;
-              }
-              console.log('[Orders] assignUnits: mapped temp id to saved orderItem', { tempId: item.orderItemId, mappedId: orderItem.id?.toString?.() ?? String(orderItem.id) });
-            } else {
-              console.warn('[Orders] assignUnits: cannot map temp id to orderItem (index out of range)', { orderItemId: item.orderItemId, orderId });
-              continue;
-            }
-          } else {
-            console.warn('[Orders] assignUnits: invalid orderItemId (not an ObjectId)', { orderItemId: item.orderItemId });
-            continue;
-          }
-        } else {
-          console.warn('[Orders] assignUnits: invalid orderItemId type', { orderItemId: item.orderItemId });
-          continue;
-        }
-      } catch (err) {
-        console.error('[Orders] assignUnits: error finding orderItem', { orderItemId: item.orderItemId, err });
-        continue;
-      }
 
-      if (!orderItem) {
-        console.warn('[Orders] assignUnits: orderItem not found', { orderItemId: item.orderItemId });
-        continue;
-      }
-
-      for (const unit of item.units) {
-        const saved = await this.orderItemUnitRepo.save(
-          this.orderItemUnitRepo.create({
-            orderId,
-            orderItemId: item.orderItemId,
-            productId: orderItem.productId,
-            imei: unit.imei,
-            serial: unit.serial,
-            status: 'assigned',
-          }),
-        );
-        console.log('[Orders] assignUnits: unit assigned', {
-          id: saved?.id?.toString?.() ?? String(saved?.id),
-          orderId,
-          orderItemId: item.orderItemId,
-          productId: saved.productId,
-          imei: saved.imei,
-          serial: saved.serial,
-        });
-      }
-    }
-  }
 
   async findAll(): Promise<Order[]> {
     const orders = await this.orderRepository.find({
@@ -541,6 +475,74 @@ export class OrdersService {
     };
   }
 
+    async assignUnits(orderId: string, dto: AssignOrderItemUnitsDto[]) {
+    console.log('[Orders] assignUnits called', { orderId, items: dto?.length ?? 0 });
+    for (const item of dto) {
+      // Validate orderItemId before converting to ObjectId
+      let orderItem: OrderItem | null = null as any;
+      try {
+        if (typeof item.orderItemId === 'string' && ObjectId.isValid(item.orderItemId)) {
+          orderItem = await this.orderItemRepository.findOne({
+            where: { id: new ObjectId(item.orderItemId) } as any,
+          });
+        } else if (typeof item.orderItemId === 'string') {
+          // Support client temporary ids like `item-0` by mapping to saved order items by index
+          const idxMatch = /^item-(\d+)$/.exec(item.orderItemId);
+          if (idxMatch) {
+            const idx = parseInt(idxMatch[1], 10);
+            const savedItems = await this.orderItemRepository.find({ where: { orderId: String(orderId) } });
+            if (Array.isArray(savedItems) && savedItems.length > idx) {
+              orderItem = savedItems[idx] as any;
+              if (!orderItem) {
+                console.warn('[Orders] assignUnits: mapped temp id but orderItem is null', { orderItemId: item.orderItemId, orderId });
+                continue;
+              }
+              console.log('[Orders] assignUnits: mapped temp id to saved orderItem', { tempId: item.orderItemId, mappedId: orderItem.id?.toString?.() ?? String(orderItem.id) });
+            } else {
+              console.warn('[Orders] assignUnits: cannot map temp id to orderItem (index out of range)', { orderItemId: item.orderItemId, orderId });
+              continue;
+            }
+          } else {
+            console.warn('[Orders] assignUnits: invalid orderItemId (not an ObjectId)', { orderItemId: item.orderItemId });
+            continue;
+          }
+        } else {
+          console.warn('[Orders] assignUnits: invalid orderItemId type', { orderItemId: item.orderItemId });
+          continue;
+        }
+      } catch (err) {
+        console.error('[Orders] assignUnits: error finding orderItem', { orderItemId: item.orderItemId, err });
+        continue;
+      }
+
+      if (!orderItem) {
+        console.warn('[Orders] assignUnits: orderItem not found', { orderItemId: item.orderItemId });
+        continue;
+      }
+
+      for (const unit of item.units) {
+        const saved = await this.orderItemUnitRepo.save(
+          this.orderItemUnitRepo.create({
+            orderId,
+            orderItemId: item.orderItemId,
+            productId: orderItem.productId,
+            imei: unit.imei,
+            serial: unit.serial,
+            status: 'assigned',
+          }),
+        );
+        console.log('[Orders] assignUnits: unit assigned', {
+          id: saved?.id?.toString?.() ?? String(saved?.id),
+          orderId,
+          orderItemId: item.orderItemId,
+          productId: saved.productId,
+          imei: saved.imei,
+          serial: saved.serial,
+        });
+      }
+    }
+  }
+
   async updateStatus(
     id: string | ObjectId,
     dto: UpdateOrderStatusDto,
@@ -595,6 +597,7 @@ export class OrdersService {
         const orderIdStr = String(updatedOrder.id);
         // Use unit-based warranty activation: gather all units assigned to this order
         const units = await this.orderItemUnitRepo.find({ where: { orderId: orderIdStr } });
+        const warrantyResults: any[] = [];
         for (const unit of units || []) {
           try {
             const imei = unit.imei || '';
@@ -608,21 +611,86 @@ export class OrdersService {
               console.warn('[Warranty] Skipping: Both IMEI and Serial are missing for unit:', unit);
               continue;
             }
-            // Ensure non-empty values are passed to the warranty service
-            // Removed condition to skip empty IMEI or Serial
-            await this.warrantyService.activate(
+            const result = await this.warrantyService.activate(
               {
                 productId: unit.productId,
                 imei,
                 serial,
                 phone: updatedOrder.phone ?? '',
                 orderId: orderIdStr,
+                orderNumber: updatedOrder.orderNumber,
               },
               'system',
             );
-            console.log('[Warranty] Created successfully for productId:', unit.productId);
+            warrantyResults.push({ unitId: unit.id, productId: unit.productId, result });
+            // Post-activation cleanup:
+            // - If warranty was created: mark this unit delivered and remove other assigned units with same IMEI.
+            // - If activation was skipped due to existing warranty (duplicate_imei or already_active) and an existing warranty is present,
+            //   remove other assigned units with same IMEI (keep current unit so admin can correct IMEI if needed).
+            try {
+              const createdId = result && (result as any).id;
+              const skipped = result && (result as any).skipped;
+              const reason = skipped ? (result as any).reason : null;
+              const existing = skipped ? (result as any).existing : null;
+              const thisUnitId = typeof unit.id === 'string' ? String(unit.id) : String(unit.id);
+
+              if (createdId) {
+                // Mark this unit as delivered (status)
+                try {
+                  await this.orderItemUnitRepo.update({ id: new ObjectId(String(unit.id)) } as any, { status: 'delivered' } as any);
+                } catch (e) {
+                  console.warn('[Warranty] Failed to update unit status for', unit.id, e);
+                }
+                // Remove other assigned units with same IMEI
+                if (imei) {
+                  try {
+                    // Find all units with same IMEI (do not restrict by status here to catch unexpected status values)
+                    const duplicates = await this.orderItemUnitRepo.find({ where: { imei: imei } as any });
+                    console.log('[Warranty] duplicates found for IMEI', imei, 'count', (duplicates || []).length);
+                    for (const dup of duplicates || []) {
+                      const dupId = String(dup.id);
+                      console.log('[Warranty] duplicate unit', { id: dupId, status: dup.status, orderId: dup.orderId });
+                      if (dupId !== thisUnitId && dup.status !== 'delivered') {
+                        try {
+                          await this.orderItemUnitRepo.delete({ id: new ObjectId(String(dup.id)) } as any);
+                          console.log('[Warranty] removed duplicate unit', dupId, 'for IMEI', imei, 'status', dup.status);
+                        } catch (e) {
+                          console.warn('[Warranty] failed to delete duplicate unit', dupId, e);
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    console.warn('[Warranty] Failed to cleanup duplicate units for IMEI', imei, e);
+                  }
+                }
+              } else if (skipped && (reason === 'duplicate_imei' || reason === 'already_active') && existing && imei) {
+                // If skipped because IMEI already has a warranty, remove other assigned units with the same IMEI (keep current unit)
+                try {
+                  const duplicates = await this.orderItemUnitRepo.find({ where: { imei: imei } as any });
+                  console.log('[Warranty] duplicates found for IMEI (skipped case)', imei, 'count', (duplicates || []).length);
+                  for (const dup of duplicates || []) {
+                    const dupId = String(dup.id);
+                    console.log('[Warranty] duplicate unit (skipped case)', { id: dupId, status: dup.status, orderId: dup.orderId });
+                    if (dupId !== thisUnitId && dup.status !== 'delivered') {
+                      try {
+                        await this.orderItemUnitRepo.delete({ id: new ObjectId(String(dup.id)) } as any);
+                        console.log('[Warranty] removed assigned unit', dupId, 'because IMEI already has warranty', existing && existing.id);
+                      } catch (e) {
+                        console.warn('[Warranty] failed to delete assigned unit', dupId, e);
+                      }
+                    }
+                  }
+                } catch (e) {
+                  console.warn('[Warranty] Failed to cleanup assigned units for IMEI', imei, e);
+                }
+              }
+            } catch (e) {
+              console.warn('[Warranty] post-activation unit cleanup failed', e);
+            }
+            console.log('[Warranty] Activation result for productId:', unit.productId, result);
           } catch (e) {
             console.error('[Warranty] Error creating for productId (unit):', unit.productId, e);
+            warrantyResults.push({ unitId: unit.id, productId: unit.productId, error: e });
           }
         }
         // Reward points যোগ করা
@@ -643,7 +711,8 @@ export class OrdersService {
         } catch (e) {
           console.error('[RewardPoints] Error updating user points:', e);
         }
-        return this.findOne(_id);
+        const orderResponse = await this.findOne(_id);
+        return { ...orderResponse, warrantyResults } as any;
       }
     }
     return this.findOne(_id);

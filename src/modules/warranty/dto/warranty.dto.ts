@@ -23,8 +23,12 @@ export class ActivateWarrantyDto {
   @IsOptional()
   @IsString()
   orderId?: string;
-}
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  orderNumber?: string;
+}
 
 export class WarrantyLookupDto {
   @ApiProperty({ required: false })
@@ -36,6 +40,10 @@ export class WarrantyLookupDto {
   serial?: string;
 
   @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
+  orderNumber?: string; // <-- add this line
+  // ...other fields if any...
   phone: string;
 }

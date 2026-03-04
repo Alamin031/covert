@@ -27,6 +27,7 @@ import { DeliveryMethodModule } from './modules/delivery-method/delivery-method.
 import { CorporateDealModule } from './modules/corporate-deal/corporate-deal.module';
 import { FlashsellModule } from './modules/flashsell/flashsell.module';
 import { MetaModule } from './modules/meta/meta.module';
+import { RolesModule } from './modules/roles/roles.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { MetaModule } from './modules/meta/meta.module';
     CorporateDealModule,
     FlashsellModule,
     MetaModule,
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
