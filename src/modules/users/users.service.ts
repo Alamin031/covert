@@ -102,7 +102,8 @@ export class UsersService {
       users.map(async (u) => {
         const { password, ...rest } = u as any;
         const roleEntity = await this.roleRepository.findOne({ where: { id: (u as any).roleId } as any } as any);
-            return { ...rest, role: roleEntity?.name ?? rest.role };
+        const roleName = rest.role ?? roleEntity?.name;
+        return { ...rest, role: roleName };
       }),
     );
     return hydrated;
@@ -123,7 +124,8 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found');
     const { password, ...rest } = user as any;
     const roleEntity = await this.roleRepository.findOne({ where: { id: (user as any).roleId } as any } as any);
-    return { ...rest, role: roleEntity?.name ?? rest.role };
+    const roleName = rest.role ?? roleEntity?.name;
+    return { ...rest, role: roleName };
   }
 
 

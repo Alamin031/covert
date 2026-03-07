@@ -197,13 +197,26 @@ export class WarrantyService {
   }
 
   async deleteLog(id: string, adminUsername?: string) {
-    const found = await this.logRepo.findOne({
-      where: { id: new ObjectId(id) },
+    // Some documents may be stored with the primary key mapped as either `id`
+    // or `_id` depending on how TypeORM handled the ObjectId at insert time.
+    // To be robust, try both shapes and then delete by the raw ObjectId like
+    // other Mongo-backed services in this codebase (e.g. PoliciesService).
+    const objectId = new ObjectId(id);
+
+    let found = await this.logRepo.findOne({
+      where: { id: objectId } as any,
     });
+    if (!found) {
+      found = await this.logRepo.findOne({
+        where: { _id: objectId } as any,
+      });
+    }
+
     if (!found) {
       throw new NotFoundException('Log not found');
     }
-    await this.logRepo.delete({ id: new ObjectId(id) });
+
+    await this.logRepo.delete(objectId as any);
     return { success: true };
   }
 
@@ -225,27 +238,7 @@ export class WarrantyService {
         `No matching warranty found for ${dto.imei ? `IMEI: ${dto.imei}` : `Serial: ${dto.serial}`} and Phone: ${dto.phone}`,
       );
     }
-    const logs = await this.logRepo.find({
-      where: { warrantyId: warranty.id ? String(warranty.id) : undefined },
-    });
-    // Calculate remaining days
-    let remainingDays: number | null = null;
-    if (warranty.expiryDate) {
-      const today = new Date();
-      const expiry = new Date(warranty.expiryDate);
-      remainingDays = Math.max(
-        0,
-        Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
-      );
-    }
-    return {
-      ...warranty,
-      id: String(warranty.id),
-      startDate: warranty.purchaseDate,
-      endDate: warranty.expiryDate,
-      remainingDays,
-      logs,
-    };
+    return await this.buildWarrantyDetail(warranty);
   }
 
   async update(
@@ -253,9 +246,15 @@ export class WarrantyService {
     dto: Partial<ActivateWarrantyDto>,
     adminUsername?: string,
   ) {
-    const warranty = await this.warrantyRepo.findOne({
-      where: { id: new ObjectId(id) },
+    const objectId = new ObjectId(id);
+    let warranty = await this.warrantyRepo.findOne({
+      where: { id: objectId } as any,
     });
+    if (!warranty) {
+      warranty = await this.warrantyRepo.findOne({
+        where: { _id: objectId } as any,
+      } as any);
+    }
     if (!warranty) throw new NotFoundException('Warranty not found');
     Object.assign(warranty, dto);
     const saved = await this.warrantyRepo.save(warranty);
@@ -270,11 +269,17 @@ export class WarrantyService {
   }
 
   async delete(id: string, adminUsername?: string) {
-    const warranty = await this.warrantyRepo.findOne({
-      where: { id: new ObjectId(id) },
+    const objectId = new ObjectId(id);
+    let warranty = await this.warrantyRepo.findOne({
+      where: { id: objectId } as any,
     });
+    if (!warranty) {
+      warranty = await this.warrantyRepo.findOne({
+        where: { _id: objectId } as any,
+      } as any);
+    }
     if (!warranty) throw new NotFoundException('Warranty not found');
-    await this.warrantyRepo.delete({ id: new ObjectId(id) });
+    await this.warrantyRepo.delete(objectId as any);
     const log = this.logRepo.create({
       warrantyId: warranty.id ? String(warranty.id) : undefined,
       action: 'deleted',
@@ -311,5 +316,51 @@ export class WarrantyService {
       limit,
       pageCount: Math.ceil(total / limit),
     };
+  }
+
+  async findByOrderNumber(orderNumber: string) {
+    const warranties = await this.warrantyRepo.find({
+      where: { orderNumber },
+      order: { createdAt: 'DESC' },
+    });
+    if (!warranties.length) {
+      throw new NotFoundException(`No warranties found for order ${orderNumber}`);
+    }
+    const detailed = await Promise.all(
+      warranties.map((w) => this.buildWarrantyDetail(w)),
+    );
+    return {
+      orderNumber,
+      total: detailed.length,
+      warranties: detailed,
+    };
+  }
+
+  private async buildWarrantyDetail(warranty: WarrantyRecord) {
+    const warrantyId = warranty.id ? String(warranty.id) : undefined;
+    const logs = warrantyId
+      ? await this.logRepo.find({
+          where: { warrantyId },
+          order: { createdAt: 'DESC' },
+        })
+      : [];
+    return {
+      ...warranty,
+      id: warrantyId,
+      startDate: warranty.purchaseDate,
+      endDate: warranty.expiryDate,
+      remainingDays: this.calculateRemainingDays(warranty.expiryDate),
+      logs,
+    };
+  }
+
+  private calculateRemainingDays(expiryDate?: Date | string | null) {
+    if (!expiryDate) return null;
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    return Math.max(
+      0,
+      Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+    );
   }
 }

@@ -83,6 +83,10 @@ export class OrdersService {
           region: item.region,
           regionName: item.regionName, // Store region name
           priceType: item.priceType, // Store price type
+            carePlanId: item.carePlanId, // Store care plan selection
+            carePlanName: item.carePlanName,
+            carePrice: item.carePrice,
+            careDuration: item.careDuration,
           image: item.image,
               // imei/serial removed from OrderItem; units should be assigned later
           dynamicInputs: item.dynamicInputs || {},
@@ -312,6 +316,10 @@ export class OrdersService {
           storageName: item.storageName,
           regionName: item.regionName,
           priceType: item.priceType,
+          carePlanId: item.carePlanId,
+          carePlanName: item.carePlanName,
+          carePrice: item.carePrice,
+          careDuration: item.careDuration,
           image: item.image,
         }));
       }),
@@ -339,6 +347,10 @@ export class OrdersService {
       storageName: item.storageName,
       regionName: item.regionName,
       priceType: item.priceType,
+      carePlanId: item.carePlanId,
+      carePlanName: item.carePlanName,
+      carePrice: item.carePrice,
+      careDuration: item.careDuration,
       image: item.image,
     }));
     return order;
@@ -364,6 +376,10 @@ export class OrdersService {
           storageName: item.storageName,
           regionName: item.regionName,
           priceType: item.priceType,
+          carePlanId: item.carePlanId,
+          carePlanName: item.carePlanName,
+          carePrice: item.carePrice,
+          careDuration: item.careDuration,
           image: item.image,
         }));
       }),
@@ -765,6 +781,10 @@ export class OrdersService {
           storageName: item.storageName,
           regionName: item.regionName,
           priceType: item.priceType,
+          carePlanId: item.carePlanId,
+          carePlanName: item.carePlanName,
+          carePrice: item.carePrice,
+          careDuration: item.careDuration,
           image: item.image,
         }));
       }),

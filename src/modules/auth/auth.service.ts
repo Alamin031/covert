@@ -31,8 +31,7 @@ export class AuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Role)
     private readonly roleRepo: Repository<Role>,
-  ) { }
-
+  ) {}
 
   async decodeAuthCode(token: string): Promise<any> {
     try {
@@ -43,9 +42,25 @@ export class AuthService {
     }
   }
   async register(dto: RegisterDto) {
-    const existing = await this.userRepo.findOne({ where: { email: dto.email } });
+    const existing = await this.userRepo.findOne({
+      where: { email: dto.email },
+    });
     if (existing) {
       throw new ConflictException('User with this email already exists');
+    }
+
+    const requestedRole = dto.role?.trim();
+    if (requestedRole && requestedRole.toLowerCase() !== 'user') {
+      throw new BadRequestException(
+        'Registration through this endpoint may only create users',
+      );
+    }
+    const roleName = 'user';
+    const roleEntity = await this.roleRepo.findOne({
+      where: { name: roleName },
+    });
+    if (!roleEntity) {
+      throw new BadRequestException(`Role "${roleName}" does not exist`);
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -54,32 +69,27 @@ export class AuthService {
       name: dto.name,
       password: hashedPassword,
       isAdmin: false,
+      roleId: roleEntity.id,
+      role: roleEntity.name,
     };
-    // attach roleId and role name if a `user` role exists
-    const userRole = await this.roleRepo.findOne({ where: { name: 'user' } });
-    if (userRole) {
-      user.roleId = userRole.id;
-      (user as any).role = userRole.name;
-    } else {
-      (user as any).role = 'user';
-    }
+
     const savedUser = await this.userRepo.save(this.userRepo.create(user));
 
-    // resolve role name and permissions for response (do not persist on user)
-    const roleName = userRole?.name ?? 'user';
-    const permissions = userRole?.permissions ?? [];
+    const permissions = roleEntity.permissions ?? [];
     return this.login({
       id: savedUser.id?.toString?.() ?? String(savedUser.id),
       email: savedUser.email,
       name: savedUser.name,
-      role: roleName,
+      role: roleEntity.name,
       image: savedUser.image ?? undefined,
       permissions,
     });
   }
 
   async adminRegister(dto: RegisterDto) {
-    const existing = await this.userRepo.findOne({ where: { email: dto.email } });
+    const existing = await this.userRepo.findOne({
+      where: { email: dto.email },
+    });
     if (existing) {
       throw new ConflictException('Admin with this email already exists');
     }
@@ -92,7 +102,9 @@ export class AuthService {
       isAdmin: true,
     };
     const roleName = dto.role || 'admin';
-    const roleEntity = await this.roleRepo.findOne({ where: { name: roleName } });
+    const roleEntity = await this.roleRepo.findOne({
+      where: { name: roleName },
+    });
     if (!roleEntity) {
       throw new BadRequestException(`Role "${roleName}" does not exist`);
     }
@@ -112,7 +124,6 @@ export class AuthService {
       permissions: resolvedPermissions,
     });
   }
-
 
   async validateUser(email: string, plainPassword: string) {
     const user = await this.userRepo.findOne({ where: { email } });
@@ -148,14 +159,23 @@ export class AuthService {
     let roleName = (valid as any).role ?? 'user';
     let permissions: string[] = [];
     if (roleName) {
-      const role = await this.roleRepo.findOne({ where: { name: roleName } as any } as any);
+      const role = await this.roleRepo.findOne({
+        where: { name: roleName } as any,
+      } as any);
       permissions = role?.permissions ?? [];
     } else if ((valid as any).roleId) {
-      const role = await this.roleRepo.findOne({ where: { id: (valid as any).roleId } as any } as any);
+      const role = await this.roleRepo.findOne({
+        where: { id: (valid as any).roleId } as any,
+      } as any);
       roleName = role?.name ?? roleName;
       permissions = role?.permissions ?? [];
     }
-    return this.login({ ...valid as any, id: valid.id?.toString?.() ?? String(valid.id), role: roleName, permissions });
+    return this.login({
+      ...(valid as any),
+      id: valid.id?.toString?.() ?? String(valid.id),
+      role: roleName,
+      permissions,
+    });
   }
 
   async socialLogin(dto: SocialLoginDto) {
@@ -181,7 +201,7 @@ export class AuthService {
       id: user.id?.toString?.() ?? String(user.id),
       email: user.email,
       name: user.name,
-      role: user.role ?? (userRole?.name ?? 'user'),
+      role: user.role ?? userRole?.name ?? 'user',
       image: user.image ?? undefined,
       permissions: userRole?.permissions ?? [],
     };
@@ -207,20 +227,27 @@ export class AuthService {
    * @param oldPassword - Current password
    * @param newPassword - New password to set
    */
-  async updatePassword(userId: string, oldPassword: string, newPassword: string) {
+  async updatePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ) {
     const objectId = new ObjectId(userId);
     let user = await this.userRepo.findOne({ where: { id: objectId } });
     if (!user) {
       user = await this.userRepo.findOne({ where: { _id: objectId } } as any);
     }
     if (!user) throw new NotFoundException('User not found');
-    if (!user.password) throw new BadRequestException('No password set for this user');
+    if (!user.password)
+      throw new BadRequestException('No password set for this user');
 
     const matches = await bcrypt.compare(oldPassword, user.password);
     if (!matches) throw new BadRequestException('Old password is incorrect');
 
     if (!newPassword || newPassword.length < 6) {
-      throw new BadRequestException('New password must be at least 6 characters');
+      throw new BadRequestException(
+        'New password must be at least 6 characters',
+      );
     }
 
     user.password = await bcrypt.hash(newPassword, 10);

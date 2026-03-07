@@ -21,6 +21,18 @@ export class OrderItemDto {
   regionName?: string;
 
   @ApiProperty({ required: false })
+  carePlanId?: string;
+
+  @ApiProperty({ required: false })
+  carePlanName?: string;
+
+  @ApiProperty({ required: false })
+  carePrice?: number;
+
+  @ApiProperty({ required: false })
+  careDuration?: string;
+
+  @ApiProperty({ required: false })
   color?: string;
 
   @ApiProperty({ required: false })

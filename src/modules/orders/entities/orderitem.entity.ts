@@ -43,6 +43,18 @@ export class OrderItem {
     regionName?: string;  // NEW FIELD
 
     @Column({ nullable: true })
+    carePlanId?: string;  // Selected care plan ID
+
+    @Column({ nullable: true })
+    carePlanName?: string;  // Selected care plan name
+
+    @Column({ nullable: true })
+    carePrice?: number;  // Price of the selected care plan
+
+    @Column({ nullable: true })
+    careDuration?: string;  // Duration/tenure of the care plan
+
+    @Column({ nullable: true })
     priceType?: string;  // NEW FIELD (offer/regular)
 
     @Column({ nullable: true })

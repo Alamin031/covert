@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DeliveryMethod } from './entities/delivery-method.entity';
 import { CreateDeliveryMethodDto, UpdateDeliveryMethodDto } from './dto/delivery-method.dto';
-import { ObjectId } from 'typeorm';
+import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class DeliveryMethodService {

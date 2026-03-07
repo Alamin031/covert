@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Delete,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { WarrantyService } from './warranty.service';
 import { ActivateWarrantyDto, WarrantyLookupDto } from './dto/warranty.dto';
@@ -99,7 +107,7 @@ export class WarrantyController {
     };
   }
 
-  @Post('delete/:id')
+  @Delete(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.DELETE_WARRANTY)
   @ApiBearerAuth()
@@ -111,11 +119,19 @@ export class WarrantyController {
     return await this.warrantyService.delete(id, user.email);
   }
 
+  @Get('order/:orderNumber')
+  @ApiOperation({ summary: 'Get warranties by order number' })
+  async findByOrderNumber(@Param('orderNumber') orderNumber: string) {
+    return await this.warrantyService.findByOrderNumber(orderNumber);
+  }
+
   @Get()
   // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles('admin', 'management')
   // @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all warranties (Admin/Management) with pagination' })
+  @ApiOperation({
+    summary: 'Get all warranties (Admin/Management) with pagination',
+  })
   async findAll(
     @Param('page') page?: number,
     @Param('limit') limit?: number,
@@ -123,8 +139,15 @@ export class WarrantyController {
   ) {
     const req = (body && body.req) || {};
     const query = req.query || {};
-    const pageNum = Number((query.page ?? (typeof page !== 'undefined' ? page : 1)) || 1);
-    const limitNum = Number((query.limit ?? (typeof limit !== 'undefined' ? limit : 100)) || 100);
-    return await this.warrantyService.findAll({ page: pageNum, limit: limitNum });
+    const pageNum = Number(
+      (query.page ?? (typeof page !== 'undefined' ? page : 1)) || 1,
+    );
+    const limitNum = Number(
+      (query.limit ?? (typeof limit !== 'undefined' ? limit : 100)) || 100,
+    );
+    return await this.warrantyService.findAll({
+      page: pageNum,
+      limit: limitNum,
+    });
   }
 }
