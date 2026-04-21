@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ObjectId } from 'mongodb';
 import { PolicyPage } from './entities/policy.entity';
 import { CreatePolicyDto, UpdatePolicyDto } from './dto/policy.dto';
 
@@ -31,7 +30,7 @@ export class PoliciesService {
   }
   async findOne(id: string) {
     const policy = await this.policyRepo.findOne({
-      where: { _id: new ObjectId(id) } as any,
+      where: { id },
     });
     if (!policy) throw new NotFoundException('Policy not found');
     return policy;
@@ -47,7 +46,7 @@ export class PoliciesService {
 
   async update(id: string, dto: UpdatePolicyDto) {
     const policy = await this.policyRepo.findOne({
-      where: { _id: new ObjectId(id) } as any,
+      where: { id },
     });
     if (!policy) throw new NotFoundException('Policy not found');
     Object.assign(policy, dto);
@@ -56,10 +55,10 @@ export class PoliciesService {
 
   async remove(id: string) {
     const policy = await this.policyRepo.findOne({
-      where: { _id: new ObjectId(id) } as any,
+      where: { id },
     });
     if (!policy) throw new NotFoundException('Policy not found');
-    await this.policyRepo.delete(new ObjectId(id));
+    await this.policyRepo.delete({ id });
     return { message: 'Policy deleted successfully' };
   }
 }

@@ -1,10 +1,9 @@
-import { Entity, ObjectIdColumn, Column, CreateDateColumn } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 @Entity('giveawayentries')
 export class GiveawayEntry {
-    @ObjectIdColumn()
-    id: ObjectId;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column()
     name: string;

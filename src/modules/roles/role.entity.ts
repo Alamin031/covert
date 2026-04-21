@@ -1,15 +1,14 @@
-import { Entity, ObjectIdColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('roles')
 export class Role {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ unique: true })
   name: string;
 
-  @Column({ nullable: true })
+  @Column('text', { array: true, nullable: true })
   permissions?: string[];
 
   @CreateDateColumn()

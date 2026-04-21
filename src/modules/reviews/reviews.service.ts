@@ -4,7 +4,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateReviewDto } from './dto/review.dto';
 import { Review } from './entities/review.entity';
-import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class ReviewsService {
@@ -36,11 +35,10 @@ export class ReviewsService {
   }
 
 
-  async remove(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    const review = await this.reviewRepository.findOne({ where: { id: _id } });
+  async remove(id: string) {
+    const review = await this.reviewRepository.findOne({ where: { id } });
     if (!review) throw new NotFoundException('Review not found');
-    await this.reviewRepository.delete(_id);
+    await this.reviewRepository.delete({ id });
     // await this.updateProductRating(review.productId); // Product rating update logic should be handled in ProductService
     return { success: true };
   }

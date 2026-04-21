@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Emi } from './entities/emi.entity';
 import { Bank } from './entities/bank.entity';
-import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class EmiService {
@@ -20,9 +19,8 @@ export class EmiService {
   }
 
   async updateEmi(id: string, dto: any) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    await this.emiRepository.update(_id, dto);
-    return this.emiRepository.findOne({ where: { _id } } as any);
+    await this.emiRepository.update({ id }, dto);
+    return this.emiRepository.findOne({ where: { id } });
   }
 
   async getAllEmis() {
@@ -31,13 +29,7 @@ export class EmiService {
     for (const emi of emis) {
       let bankName: string = '';
       if (emi.bankId) {
-        let bankObjectId;
-        try {
-          bankObjectId = new ObjectId(emi.bankId);
-        } catch {
-          bankObjectId = emi.bankId;
-        }
-        const bank = await this.bankRepository.findOne({ where: { _id: bankObjectId } } as any);
+        const bank = await this.bankRepository.findOne({ where: { id: emi.bankId } });
         bankName = bank?.bankname || '';
       }
       result.push({
@@ -49,11 +41,10 @@ export class EmiService {
   }
 
   async getEmi(id: string) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    const emi = await this.emiRepository.findOne({ where: { _id } } as any);
+    const emi = await this.emiRepository.findOne({ where: { id } });
     let bankName: string = '';
     if (emi?.bankId) {
-      const bank = await this.bankRepository.findOne({ where: { _id: emi.bankId } } as any);
+      const bank = await this.bankRepository.findOne({ where: { id: emi.bankId } });
       bankName = bank?.bankname || '';
     }
     return {
@@ -63,8 +54,7 @@ export class EmiService {
   }
 
   async removeEmi(id: string) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    await this.emiRepository.delete(_id);
+    await this.emiRepository.delete({ id });
     return { success: true };
   }
 
@@ -73,8 +63,7 @@ export class EmiService {
   }
 
   async getBank(id: string) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    return this.bankRepository.findOne({ where: { _id } } as any);
+    return this.bankRepository.findOne({ where: { id } });
   }
 
   async createBank(dto: any) {
@@ -86,14 +75,12 @@ export class EmiService {
   }
 
   async updateBank(id: string, dto: any) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    await this.bankRepository.update(_id, dto);
-    return this.bankRepository.findOne({ where: { _id } } as any);
+    await this.bankRepository.update({ id }, dto);
+    return this.bankRepository.findOne({ where: { id } });
   }
 
   async removeBank(id: string) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    await this.bankRepository.delete(_id);
+    await this.bankRepository.delete({ id });
     return { success: true };
   }
 }

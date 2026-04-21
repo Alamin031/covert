@@ -1,11 +1,11 @@
-import { Entity, ObjectIdColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Role } from '../../roles/role.entity';
 
 
 @Entity('users')
 export class User {
-    @ObjectIdColumn()
-    id: ObjectId;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
 
     @Column()
@@ -24,8 +24,12 @@ export class User {
     password?: string;
 
 
-    @Column({ nullable: true })
-    roleId?: ObjectId;
+    @Column({ type: 'uuid', nullable: true })
+    roleId?: string;
+
+    @ManyToOne(() => Role, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'roleId' })
+    roleEntity?: Role;
 
     @Column({ default: 'user' })
     role: string;

@@ -1,10 +1,9 @@
-import { Entity, ObjectIdColumn, Column } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('loyaltypoints')
 export class LoyaltyPoints {
-    @ObjectIdColumn()
-    id: ObjectId;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column()
     userId: string; // Store as string for compatibility with external user system

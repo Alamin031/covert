@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CorporateDeal } from './entities/corporate-deal.entity';
 import { CreateCorporateDealDto } from './dto/corporate-deal.dto';
-import { ObjectId } from 'mongodb';
 import {
   Notification,
   NotificationType,
@@ -24,7 +23,7 @@ export class CorporateDealService {
 
   async findOne(id: string): Promise<CorporateDeal> {
     const deal = await this.corporateDealRepository.findOneBy({
-      id: new ObjectId(id),
+      id,
     });
     if (!deal) throw new NotFoundException('Corporate deal not found');
     return deal;
@@ -56,6 +55,6 @@ export class CorporateDealService {
   }
 
   async remove(id: string): Promise<void> {
-    await this.corporateDealRepository.delete(new ObjectId(id));
+    await this.corporateDealRepository.delete({ id });
   }
 }

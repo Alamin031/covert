@@ -1,16 +1,16 @@
 // product-color.entity.ts
 import {
   Entity,
-  ObjectIdColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   ManyToOne,
   OneToMany,
+  JoinColumn,
   Index,
   BeforeInsert,
   BeforeUpdate,
 } from 'typeorm';
-import { ObjectId } from 'mongodb';
 import { Product } from './product-new.entity';
 import { ProductRegion } from './product-region.entity';
 import { ProductNetwork } from './product-network.entity';
@@ -19,31 +19,28 @@ import { ProductStorage } from './product-storage.entity';
 @Entity('product_colors')
 @Index('IDX_product_color_product_unique', ['productId', 'colorName'], {
   unique: true,
-  background: true,
-  partialFilterExpression: { productId: { $type: 'objectId' } },
-} as any)
+  where: '"productId" IS NOT NULL',
+})
 @Index('IDX_product_color_region_unique', ['regionId', 'colorName'], {
   unique: true,
-  background: true,
-  partialFilterExpression: { regionId: { $type: 'objectId' } },
-} as any)
+  where: '"regionId" IS NOT NULL',
+})
 @Index('IDX_product_color_network_unique', ['networkId', 'colorName'], {
   unique: true,
-  background: true,
-  partialFilterExpression: { networkId: { $type: 'objectId' } },
-} as any)
+  where: '"networkId" IS NOT NULL',
+})
 export class ProductColor {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ nullable: true })
-  productId?: ObjectId; // For products without region variant (direct color)
+  @Column({ type: 'uuid', nullable: true })
+  productId?: string; // For products without region variant (direct color)
 
-  @Column({ nullable: true })
-  regionId?: ObjectId; // For products with region variant
+  @Column({ type: 'uuid', nullable: true })
+  regionId?: string; // For products with region variant
 
-  @Column({ nullable: true })
-  networkId?: ObjectId; // For products with network variant (WiFi, WiFi+Cellular)
+  @Column({ type: 'uuid', nullable: true })
+  networkId?: string; // For products with network variant (WiFi, WiFi+Cellular)
 
   @Column()
   colorName: string;
@@ -96,15 +93,20 @@ export class ProductColor {
   // Relations
   @ManyToOne(() => Product, (product) => product.directColors, {
     nullable: true,
+    onDelete: 'CASCADE',
   })
+  @JoinColumn({ name: 'productId' })
   product?: Product; // For direct product-to-color (no region)
 
-  @ManyToOne(() => ProductRegion, (region) => region.colors, { nullable: true })
+  @ManyToOne(() => ProductRegion, (region) => region.colors, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'regionId' })
   region?: ProductRegion; // For region-based colors
 
   @ManyToOne(() => ProductNetwork, (network) => network.colors, {
     nullable: true,
+    onDelete: 'CASCADE',
   })
+  @JoinColumn({ name: 'networkId' })
   network?: ProductNetwork; // For network-based colors
 
   @OneToMany(() => ProductStorage, (storage) => storage.color, {
@@ -119,7 +121,7 @@ export class ProductColor {
   @BeforeInsert()
   @BeforeUpdate()
   validateVariantType() {
-    // Remove null values to ensure sparse indexes work correctly
+    // Keep only the relevant nullable foreign key for partial unique indexes.
     if (!this.productId) delete this.productId;
     if (!this.regionId) delete this.regionId;
     if (!this.networkId) delete this.networkId;

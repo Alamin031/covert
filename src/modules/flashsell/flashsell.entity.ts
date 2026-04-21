@@ -1,10 +1,9 @@
-import { Entity, ObjectIdColumn, Column } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('flashsells')
 export class Flashsell {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   title: string;
@@ -12,7 +11,7 @@ export class Flashsell {
   @Column()
   bannerImg: string;
 
-  @Column()
+  @Column('uuid', { array: true })
   productIds: string[];
 
   @Column()

@@ -32,11 +32,16 @@ import { RolesModule } from './modules/roles/roles.module';
 @Module({
   imports: [
     TypeOrmModule.forRoot({
-      type: 'mongodb',
-      url: process.env.DATABASE_URL,
-      // extra: {},
+      type: 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT || 5432),
+      username: process.env.DB_USERNAME || 'postgres',
+      password: process.env.DB_PASSWORD || 'postgres',
+      database: process.env.DB_DATABASE || 'fd_telecom',
+      ...(process.env.DATABASE_URL ? { url: process.env.DATABASE_URL } : {}),
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: false, // Disabled to prevent index conflicts with manual partialFilterExpression indexes
+      migrations: [__dirname + '/migrations/*{.ts,.js}'],
+      synchronize: false,
     }),
     AuthModule,
     UsersModule,

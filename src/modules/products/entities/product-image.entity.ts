@@ -1,21 +1,20 @@
 import {
   Entity,
-  ObjectIdColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { ObjectId } from 'mongodb';
 import { Product } from './product-new.entity';
 
 @Entity('product_images')
 export class ProductImage {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column()
-  productId: ObjectId;
+  @Column({ type: 'uuid' })
+  productId: string;
 
   @Column()
   imageUrl: string;
@@ -30,7 +29,8 @@ export class ProductImage {
   displayOrder: number;
 
   // Relations
-  @ManyToOne(() => Product, (product) => product.images)
+  @ManyToOne(() => Product, (product) => product.images, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'productId' })
   product: Product;
 
   @CreateDateColumn()

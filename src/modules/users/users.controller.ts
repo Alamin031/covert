@@ -23,6 +23,7 @@ import {
   FileFieldsUpload,
   UploadType,
 } from 'src/common/decorators/file-upload.decorator';
+import { isUuid } from '../../common/utils/id.util';
 
 @ApiBearerAuth()
 @ApiTags('users')
@@ -36,8 +37,8 @@ export class UsersController {
   // =======================
   // UTIL
   // =======================
-  private validateMongoId(id: string) {
-    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+  private validateUuid(id: string) {
+    if (!isUuid(id)) {
       throw new BadRequestException('Invalid ID');
     }
   }
@@ -90,7 +91,7 @@ export class UsersController {
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   async findOne(@Param('id') id: string): Promise<UserResponseDto> {
-    this.validateMongoId(id);
+    this.validateUuid(id);
     const user = await this.usersService.findOne(id);
     return this.mapUser(user);
   }
@@ -110,7 +111,7 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @UploadedFiles() files: { image?: Express.Multer.File[] },
   ) {
-    this.validateMongoId(id);
+    this.validateUuid(id);
 
     const maybeRole = (dto as { role?: unknown }).role;
     if (typeof maybeRole === 'string') {
@@ -141,7 +142,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {
-    this.validateMongoId(id);
+    this.validateUuid(id);
     await this.usersService.remove(id);
     return { message: 'User deleted successfully' };
   }

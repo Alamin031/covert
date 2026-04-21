@@ -7,8 +7,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Repository, DataSource, In, Not, ArrayOverlap } from 'typeorm';
 import {
   CreateBasicProductDto,
   CreateNetworkProductDto,
@@ -100,15 +99,15 @@ export class ProductService {
 
     if (!Array.isArray(idArray) || idArray.length === 0) return [];
 
-    const objectIds = idArray.map((id) =>
-      typeof id === 'string' && id.length === 24 ? new ObjectId(id) : id,
+    const idsForQuery = idArray.map((id) =>
+      typeof id === 'string' && id.length === 24 ? id : id,
     );
 
-    // Use Mongo repository to ensure $in query works reliably
-    const mongoRepo =
-      this.productRepository.manager.getMongoRepository(Product);
-    let products = await mongoRepo.find({
-      where: { _id: { $in: objectIds } },
+    // Query products by UUID list.
+    const productRepo =
+      this.productRepository.manager.getRepository(Product);
+    let products = await productRepo.find({
+      where: { id: In(idsForQuery) },
     } as any);
 
     products = await Promise.all(
@@ -123,15 +122,10 @@ export class ProductService {
   //product find by brandids
   async findByBrandIds(brandIds: string[]): Promise<any[]> {
     if (!brandIds || brandIds.length === 0) return [];
-    const objectBrandIds = brandIds.map((id) =>
-      id.length === 24 ? new ObjectId(id) : id,
-    );
-
-    // Use native MongoDB query for reliability
-    const mongoRepo =
-      this.productRepository.manager.getMongoRepository(Product);
-    const query = { brandIds: { $in: objectBrandIds } };
-    let products = await mongoRepo.find({ where: query });
+    const ids = brandIds.filter(Boolean);
+    let products = await this.productRepository.find({
+      where: [{ brandId: In(ids) }, { brandIds: ArrayOverlap(ids) }] as any,
+    });
 
     products = await Promise.all(
       products.map(async (product) => {
@@ -173,12 +167,12 @@ export class ProductService {
       // Handle multiple categories and brands
       if ((createProductDto as any).categoryIds) {
         product.categoryIds = (createProductDto as any).categoryIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
       if ((createProductDto as any).brandIds) {
         product.brandIds = (createProductDto as any).brandIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
 
@@ -332,12 +326,12 @@ export class ProductService {
       // Handle multiple categories and brands
       if ((createProductDto as any).categoryIds) {
         product.categoryIds = (createProductDto as any).categoryIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
       if ((createProductDto as any).brandIds) {
         product.brandIds = (createProductDto as any).brandIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
 
@@ -535,12 +529,12 @@ export class ProductService {
       // Handle multiple categories and brands
       if ((createProductDto as any).categoryIds) {
         product.categoryIds = (createProductDto as any).categoryIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
       if ((createProductDto as any).brandIds) {
         product.brandIds = (createProductDto as any).brandIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
 
@@ -720,11 +714,11 @@ export class ProductService {
     await queryRunner.startTransaction();
 
     try {
-      const productObjectId = new ObjectId(id);
+      const productUUID = id;
 
       // 1️⃣ Find product
       const product = await this.productRepository.findOne({
-        where: { _id: productObjectId } as any,
+        where: { id: productUUID } as any,
       });
 
       if (!product) throw new NotFoundException('Product not found');
@@ -743,13 +737,13 @@ export class ProductService {
 
       if ((updateProductDto as any).categoryIds) {
         product.categoryIds = (updateProductDto as any).categoryIds.map(
-          (c: string) => new ObjectId(c),
+          (c: string) => c,
         );
       }
 
       if ((updateProductDto as any).brandIds) {
         product.brandIds = (updateProductDto as any).brandIds.map(
-          (b: string) => new ObjectId(b),
+          (b: string) => b,
         );
       }
 
@@ -782,16 +776,15 @@ export class ProductService {
 
       if (existingImagesWithIds.length > 0) {
         const existingIds = existingImagesWithIds.map(
-          (img) => new ObjectId(img.id),
+          (img) => img.id,
         );
 
         // Fetch existing images from database
         const existingDbImages = await queryRunner.manager
-          .getMongoRepository(ProductImage)
+          .getRepository(ProductImage)
           .find({
-            where: {
-              _id: { $in: existingIds },
-              productId: productObjectId,
+            where: { id: In(existingIds),
+              productId: productUUID,
             } as any,
           });
 
@@ -813,7 +806,7 @@ export class ProductService {
           } else {
             // Image ID exists in input but not in DB - treat as new
             const image = new ProductImage();
-            image.productId = productObjectId;
+            image.productId = productUUID;
             image.imageUrl = imgInput.url;
             image.isThumbnail = imgInput.isThumbnail ?? false;
             image.altText = imgInput.altText ?? '';
@@ -827,7 +820,7 @@ export class ProductService {
       const additionalNewImages = await Promise.all(
         newImagesWithoutIds.map(async (imgInput, index) => {
           const image = new ProductImage();
-          image.productId = productObjectId;
+          image.productId = productUUID;
           // If imgInput.url is already a Cloudflare URL, use as is
           if (imgInput.url && imgInput.url.includes('imagedelivery.net')) {
             image.imageUrl = imgInput.url;
@@ -859,28 +852,28 @@ export class ProductService {
       let deletedImages: ProductImage[] = [];
       if (keepImageIds.length > 0) {
         // Find images to delete
-        const keepObjectIds = keepImageIds.map((id) => new ObjectId(id));
+        const keepUUIDs = keepImageIds.map((id) => id);
         const imageIdsToKeep = [
-          ...keepObjectIds,
+          ...keepUUIDs,
           ...newImagesToCreate.map((img) => img.id).filter((id) => id),
         ];
-        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+        deletedImages = await queryRunner.manager.getRepository(ProductImage).find({
           where: {
-            productId: productObjectId,
-            _id: { $nin: imageIdsToKeep },
+            productId: productUUID,
+            id: Not(In(imageIdsToKeep)),
           } as any,
         });
-        await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
-          productId: productObjectId,
-          _id: { $nin: imageIdsToKeep },
+        await queryRunner.manager.getRepository(ProductImage).delete({
+          productId: productUUID,
+          id: Not(In(imageIdsToKeep)),
         } as any);
       } else {
         // If no keepImageIds provided, delete all existing images and recreate
-        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
-          where: { productId: productObjectId } as any,
+        deletedImages = await queryRunner.manager.getRepository(ProductImage).find({
+          where: { productId: productUUID } as any,
         });
-        await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
-          productId: productObjectId,
+        await queryRunner.manager.getRepository(ProductImage).delete({
+          productId: productUUID,
         });
       }
 
@@ -902,14 +895,14 @@ export class ProductService {
 
       // 4️⃣ VIDEOS
       await queryRunner.manager
-        .getMongoRepository(ProductVideo)
-        .deleteMany({ productId: productObjectId });
+        .getRepository(ProductVideo)
+        .delete({ productId: productUUID });
 
       if ((updateProductDto as any).videos) {
         const videos = (updateProductDto as any).videos.map(
           (v: any, idx: number) => {
             const video = new ProductVideo();
-            video.productId = productObjectId;
+            video.productId = productUUID;
             video.videoUrl = v.videoUrl;
             video.videoType = v.videoType;
             video.displayOrder = v.displayOrder ?? idx;
@@ -923,14 +916,14 @@ export class ProductService {
 
       // 5️⃣ SPECIFICATIONS
       await queryRunner.manager
-        .getMongoRepository(ProductSpecification)
-        .deleteMany({ productId: productObjectId });
+        .getRepository(ProductSpecification)
+        .delete({ productId: productUUID });
 
       if ((updateProductDto as any).specifications) {
         const specs = (updateProductDto as any).specifications.map(
           (s: any, index: number) => {
             const spec = new ProductSpecification();
-            spec.productId = productObjectId;
+            spec.productId = productUUID;
             spec.specKey = s.specKey;
             spec.specValue = s.specValue;
             spec.displayOrder = s.displayOrder ?? index;
@@ -967,7 +960,7 @@ export class ProductService {
     try {
       // 1. Find existing product
       const product = await this.productRepository.findOne({
-        where: { _id: new ObjectId(id) } as any,
+        where: { id: id } as any,
       });
 
       if (!product) {
@@ -995,12 +988,12 @@ export class ProductService {
       // Handle multiple categories and brands
       if ((updateProductDto as any).categoryIds) {
         product.categoryIds = (updateProductDto as any).categoryIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
       if ((updateProductDto as any).brandIds) {
         product.brandIds = (updateProductDto as any).brandIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
 
@@ -1013,21 +1006,21 @@ export class ProductService {
 
       // 3. Delete existing related data
       await queryRunner.manager.delete(ProductImage, {
-        productId: new ObjectId(id),
+        productId: id,
       });
       await queryRunner.manager.delete(ProductVideo, {
-        productId: new ObjectId(id),
+        productId: id,
       });
-      // Use deleteMany for MongoDB to ensure all specs are deleted
+      // Delete all matching specifications.
       await queryRunner.manager
-        .getMongoRepository(ProductSpecification)
-        .deleteMany({
-          productId: new ObjectId(id),
+        .getRepository(ProductSpecification)
+        .delete({
+          productId: id,
         });
 
       // Load existing networks and preserve color images
       const existingNetworks = await queryRunner.manager.find(ProductNetwork, {
-        where: { productId: new ObjectId(id) } as any,
+        where: { productId: id } as any,
       });
 
       // Create a map to store existing color images by network type and color name
@@ -1035,7 +1028,7 @@ export class ProductService {
 
       for (const network of existingNetworks) {
         const networkColors = await queryRunner.manager.find(ProductColor, {
-          where: { networkId: new ObjectId(network.id) } as any,
+          where: { networkId: network.id } as any,
         });
 
         const colorImageMap = new Map<string, string>();
@@ -1056,65 +1049,65 @@ export class ProductService {
         }
       }
 
-      // Delete existing networks and their related data (MongoDB-specific)
+      // Delete existing networks and their related data
       for (const network of existingNetworks) {
-        const networkObjectId = new ObjectId(network.id);
+        const networkUUID = network.id;
 
         // Delete default storages for network
         const networkStorages = await queryRunner.manager.find(ProductStorage, {
-          where: { networkId: networkObjectId } as any,
+          where: { networkId: networkUUID } as any,
         });
 
         for (const storage of networkStorages) {
-          const storageObjectId = new ObjectId(storage.id);
+          const storageUUID = storage.id;
           await queryRunner.manager
-            .getMongoRepository(ProductPrice)
-            .deleteMany({
-              storageId: storageObjectId,
+            .getRepository(ProductPrice)
+            .delete({
+              storageId: storageUUID,
             });
         }
 
         await queryRunner.manager
-          .getMongoRepository(ProductStorage)
-          .deleteMany({
-            networkId: networkObjectId,
+          .getRepository(ProductStorage)
+          .delete({
+            networkId: networkUUID,
           });
 
         // Delete colors and their storages
         const networkColors = await queryRunner.manager.find(ProductColor, {
-          where: { networkId: networkObjectId } as any,
+          where: { networkId: networkUUID } as any,
         });
 
         for (const color of networkColors) {
-          const colorObjectId = new ObjectId(color.id);
+          const colorUUID = color.id;
 
           const colorStorages = await queryRunner.manager.find(ProductStorage, {
-            where: { colorId: colorObjectId } as any,
+            where: { colorId: colorUUID } as any,
           });
 
           for (const storage of colorStorages) {
-            const storageObjectId = new ObjectId(storage.id);
+            const storageUUID = storage.id;
             await queryRunner.manager
-              .getMongoRepository(ProductPrice)
-              .deleteMany({
-                storageId: storageObjectId,
+              .getRepository(ProductPrice)
+              .delete({
+                storageId: storageUUID,
               });
           }
 
           await queryRunner.manager
-            .getMongoRepository(ProductStorage)
-            .deleteMany({
-              colorId: colorObjectId,
+            .getRepository(ProductStorage)
+            .delete({
+              colorId: colorUUID,
             });
         }
 
-        await queryRunner.manager.getMongoRepository(ProductColor).deleteMany({
-          networkId: networkObjectId,
+        await queryRunner.manager.getRepository(ProductColor).delete({
+          networkId: networkUUID,
         });
       }
 
-      await queryRunner.manager.getMongoRepository(ProductNetwork).deleteMany({
-        productId: new ObjectId(id),
+      await queryRunner.manager.getRepository(ProductNetwork).delete({
+        productId: id,
       });
 
       // 4. Save new Images (upsert/delete logic)
@@ -1134,13 +1127,12 @@ export class ProductService {
       let newImagesToCreate: ProductImage[] = [];
       if (existingImagesWithIds.length > 0) {
         const existingIds = existingImagesWithIds.map(
-          (img: any) => new ObjectId(img.id),
+          (img: any) => img.id,
         );
         const existingDbImages = await queryRunner.manager
-          .getMongoRepository(ProductImage)
+          .getRepository(ProductImage)
           .find({
-            where: {
-              _id: { $in: existingIds },
+            where: { id: In(existingIds),
               productId: savedProduct.id,
             } as any,
           });
@@ -1204,26 +1196,26 @@ export class ProductService {
       // Delete images that are not in the input (but respect keepImageIds if provided)
       let deletedImages: ProductImage[] = [];
       if (keepImageIds.length > 0) {
-        const keepObjectIds = keepImageIds.map((id) => new ObjectId(id));
+        const keepUUIDs = keepImageIds.map((id) => id);
         const imageIdsToKeep = [
-          ...keepObjectIds,
+          ...keepUUIDs,
           ...newImagesToCreate.map((img) => img.id).filter((id) => id),
         ];
-        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+        deletedImages = await queryRunner.manager.getRepository(ProductImage).find({
           where: {
             productId: savedProduct.id,
-            _id: { $nin: imageIdsToKeep },
+            id: Not(In(imageIdsToKeep)),
           } as any,
         });
-        await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
+        await queryRunner.manager.getRepository(ProductImage).delete({
           productId: savedProduct.id,
-          _id: { $nin: imageIdsToKeep },
+          id: Not(In(imageIdsToKeep)),
         } as any);
       } else {
-        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+        deletedImages = await queryRunner.manager.getRepository(ProductImage).find({
           where: { productId: savedProduct.id } as any,
         });
-        await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
+        await queryRunner.manager.getRepository(ProductImage).delete({
           productId: savedProduct.id,
         });
       }
@@ -1435,7 +1427,7 @@ export class ProductService {
     try {
       // 1. Find existing product
       const product = await this.productRepository.findOne({
-        where: { _id: new ObjectId(id) } as any,
+        where: { id: id } as any,
       });
 
       if (!product) {
@@ -1458,12 +1450,12 @@ export class ProductService {
       // Handle multiple categories and brands
       if ((updateProductDto as any).categoryIds) {
         product.categoryIds = (updateProductDto as any).categoryIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
       if ((updateProductDto as any).brandIds) {
         product.brandIds = (updateProductDto as any).brandIds.map(
-          (id: string) => new ObjectId(id),
+          (id: string) => id,
         );
       }
 
@@ -1476,21 +1468,21 @@ export class ProductService {
 
       // 3. Delete existing related data
       await queryRunner.manager.delete(ProductImage, {
-        productId: new ObjectId(id),
+        productId: id,
       });
       await queryRunner.manager.delete(ProductVideo, {
-        productId: new ObjectId(id),
+        productId: id,
       });
-      // Use deleteMany for MongoDB to ensure all specs are deleted
+      // Delete all matching specifications.
       await queryRunner.manager
-        .getMongoRepository(ProductSpecification)
-        .deleteMany({
-          productId: new ObjectId(id),
+        .getRepository(ProductSpecification)
+        .delete({
+          productId: id,
         });
 
       // Load existing regions and preserve color images
       const existingRegions = await queryRunner.manager.find(ProductRegion, {
-        where: { productId: new ObjectId(id) } as any,
+        where: { productId: id } as any,
       });
 
       // Create a map to store existing color images by region name and color name
@@ -1498,7 +1490,7 @@ export class ProductService {
 
       for (const region of existingRegions) {
         const regionColors = await queryRunner.manager.find(ProductColor, {
-          where: { regionId: new ObjectId(region.id) } as any,
+          where: { regionId: region.id } as any,
         });
 
         const colorImageMap = new Map<string, string>();
@@ -1519,65 +1511,65 @@ export class ProductService {
         }
       }
 
-      // Delete existing regions and their related data (MongoDB-specific)
+      // Delete existing regions and their related data
       for (const region of existingRegions) {
-        const regionObjectId = new ObjectId(region.id);
+        const regionUUID = region.id;
 
         // Delete default storages for region
         const regionStorages = await queryRunner.manager.find(ProductStorage, {
-          where: { regionId: regionObjectId } as any,
+          where: { regionId: regionUUID } as any,
         });
 
         for (const storage of regionStorages) {
-          const storageObjectId = new ObjectId(storage.id);
+          const storageUUID = storage.id;
           await queryRunner.manager
-            .getMongoRepository(ProductPrice)
-            .deleteMany({
-              storageId: storageObjectId,
+            .getRepository(ProductPrice)
+            .delete({
+              storageId: storageUUID,
             });
         }
 
         await queryRunner.manager
-          .getMongoRepository(ProductStorage)
-          .deleteMany({
-            regionId: regionObjectId,
+          .getRepository(ProductStorage)
+          .delete({
+            regionId: regionUUID,
           });
 
         // Delete colors and their storages
         const regionColors = await queryRunner.manager.find(ProductColor, {
-          where: { regionId: regionObjectId } as any,
+          where: { regionId: regionUUID } as any,
         });
 
         for (const color of regionColors) {
-          const colorObjectId = new ObjectId(color.id);
+          const colorUUID = color.id;
 
           const colorStorages = await queryRunner.manager.find(ProductStorage, {
-            where: { colorId: colorObjectId } as any,
+            where: { colorId: colorUUID } as any,
           });
 
           for (const storage of colorStorages) {
-            const storageObjectId = new ObjectId(storage.id);
+            const storageUUID = storage.id;
             await queryRunner.manager
-              .getMongoRepository(ProductPrice)
-              .deleteMany({
-                storageId: storageObjectId,
+              .getRepository(ProductPrice)
+              .delete({
+                storageId: storageUUID,
               });
           }
 
           await queryRunner.manager
-            .getMongoRepository(ProductStorage)
-            .deleteMany({
-              colorId: colorObjectId,
+            .getRepository(ProductStorage)
+            .delete({
+              colorId: colorUUID,
             });
         }
 
-        await queryRunner.manager.getMongoRepository(ProductColor).deleteMany({
-          regionId: regionObjectId,
+        await queryRunner.manager.getRepository(ProductColor).delete({
+          regionId: regionUUID,
         });
       }
 
-      await queryRunner.manager.getMongoRepository(ProductRegion).deleteMany({
-        productId: new ObjectId(id),
+      await queryRunner.manager.getRepository(ProductRegion).delete({
+        productId: id,
       });
 
       // 4. Save new Images, Videos, Specs
@@ -1597,13 +1589,12 @@ export class ProductService {
       let newImagesToCreate: ProductImage[] = [];
       if (existingImagesWithIds.length > 0) {
         const existingIds = existingImagesWithIds.map(
-          (img: any) => new ObjectId(img.id),
+          (img: any) => img.id,
         );
         const existingDbImages = await queryRunner.manager
-          .getMongoRepository(ProductImage)
+          .getRepository(ProductImage)
           .find({
-            where: {
-              _id: { $in: existingIds },
+            where: { id: In(existingIds),
               productId: savedProduct.id,
             } as any,
           });
@@ -1666,26 +1657,26 @@ export class ProductService {
       // Delete images that are not in the input (but respect keepImageIds if provided)
       let deletedImages: ProductImage[] = [];
       if (keepImageIds.length > 0) {
-        const keepObjectIds = keepImageIds.map((id) => new ObjectId(id));
+        const keepUUIDs = keepImageIds.map((id) => id);
         const imageIdsToKeep = [
-          ...keepObjectIds,
+          ...keepUUIDs,
           ...newImagesToCreate.map((img) => img.id).filter((id) => id),
         ];
-        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+        deletedImages = await queryRunner.manager.getRepository(ProductImage).find({
           where: {
             productId: savedProduct.id,
-            _id: { $nin: imageIdsToKeep },
+            id: Not(In(imageIdsToKeep)),
           } as any,
         });
-        await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
+        await queryRunner.manager.getRepository(ProductImage).delete({
           productId: savedProduct.id,
-          _id: { $nin: imageIdsToKeep },
+          id: Not(In(imageIdsToKeep)),
         } as any);
       } else {
-        deletedImages = await queryRunner.manager.getMongoRepository(ProductImage).find({
+        deletedImages = await queryRunner.manager.getRepository(ProductImage).find({
           where: { productId: savedProduct.id } as any,
         });
-        await queryRunner.manager.getMongoRepository(ProductImage).deleteMany({
+        await queryRunner.manager.getRepository(ProductImage).delete({
           productId: savedProduct.id,
         });
       }
@@ -1898,10 +1889,10 @@ export class ProductService {
     const whereConditions: any = {};
 
     if (filters?.categoryIds) {
-      whereConditions.categoryIds = new ObjectId(filters.categoryIds);
+      whereConditions.categoryIds = filters.categoryIds;
     }
     if (filters?.brandId) {
-      whereConditions.brandId = new ObjectId(filters.brandId);
+      whereConditions.brandId = filters.brandId;
     }
     if (filters?.isActive !== undefined) {
       whereConditions.isActive = filters.isActive;
@@ -1928,14 +1919,14 @@ export class ProductService {
         where: whereConditions,
       });
 
-      // Manually load images for MongoDB
+      // Manually load images for the product list.
       const needsImages = fieldsArray.includes('images');
       if (needsImages && products.length > 0) {
-        const productIds = products.map((p) => new ObjectId(p.id));
+        const productIds = products.map((p) => p.id);
         const allImages = await this.dataSource
-          .getMongoRepository(ProductImage)
+          .getRepository(ProductImage)
           .find({
-            where: { productId: { $in: productIds } } as any,
+            where: { productId: In(productIds) } as any,
             order: { displayOrder: 'ASC' },
           });
 
@@ -2032,7 +2023,7 @@ export class ProductService {
     networkId?: string,
   ) {
     const product = await this.productRepository.findOne({
-      where: { _id: new ObjectId(productId) } as any,
+      where: { id: productId } as any,
     });
 
     if (!product) {
@@ -2069,10 +2060,10 @@ export class ProductService {
     colorId?: string,
     storageId?: string,
   ) {
-    // For MongoDB, we need to manually query and filter
+    // Manually query and filter related rows.
     // This is a simplified version - you may need to implement more complex logic
     const product = await this.productRepository.findOne({
-      where: { _id: new ObjectId(productId) } as any,
+      where: { id: productId } as any,
     });
 
     if (!product || !product.regions || product.regions.length === 0) {
@@ -2119,7 +2110,7 @@ export class ProductService {
    */
   async remove(id: string) {
     const product = await this.productRepository.findOne({
-      where: { _id: new ObjectId(id) } as any,
+      where: { id: id } as any,
     });
 
     if (!product) {
@@ -2129,13 +2120,13 @@ export class ProductService {
     // Delete all related data
     // Colors (direct)
     await this.dataSource
-      .getMongoRepository(ProductColor)
-      .deleteMany({ productId: new ObjectId(id) });
+      .getRepository(ProductColor)
+      .delete({ productId: id });
 
     // Images: delete from Cloudflare first
     const images = await this.dataSource
-      .getMongoRepository(ProductImage)
-      .find({ where: { productId: new ObjectId(id) } });
+      .getRepository(ProductImage)
+      .find({ where: { productId: id } });
     for (const img of images) {
       if (img.imageUrl) {
         try {
@@ -2146,117 +2137,117 @@ export class ProductService {
       }
     }
     await this.dataSource
-      .getMongoRepository(ProductImage)
-      .deleteMany({ productId: new ObjectId(id) });
+      .getRepository(ProductImage)
+      .delete({ productId: id });
 
     // Videos
     await this.dataSource
-      .getMongoRepository(ProductVideo)
-      .deleteMany({ productId: new ObjectId(id) });
+      .getRepository(ProductVideo)
+      .delete({ productId: id });
     // Specifications
     await this.dataSource
-      .getMongoRepository(ProductSpecification)
-      .deleteMany({ productId: new ObjectId(id) });
+      .getRepository(ProductSpecification)
+      .delete({ productId: id });
     // Networks
     const networks = await this.dataSource
-      .getMongoRepository(ProductNetwork)
-      .find({ where: { productId: new ObjectId(id) } });
+      .getRepository(ProductNetwork)
+      .find({ where: { productId: id } });
     for (const network of networks) {
       // Colors for network
       const networkColors = await this.dataSource
-        .getMongoRepository(ProductColor)
+        .getRepository(ProductColor)
         .find({ where: { networkId: network.id } });
       for (const color of networkColors) {
         // Storages for color
         const storages = await this.dataSource
-          .getMongoRepository(ProductStorage)
+          .getRepository(ProductStorage)
           .find({ where: { colorId: color.id } });
         for (const storage of storages) {
           await this.dataSource
-            .getMongoRepository(ProductPrice)
-            .deleteMany({ storageId: storage.id });
+            .getRepository(ProductPrice)
+            .delete({ storageId: storage.id });
         }
         await this.dataSource
-          .getMongoRepository(ProductStorage)
-          .deleteMany({ colorId: color.id });
+          .getRepository(ProductStorage)
+          .delete({ colorId: color.id });
       }
       await this.dataSource
-        .getMongoRepository(ProductColor)
-        .deleteMany({ networkId: network.id });
+        .getRepository(ProductColor)
+        .delete({ networkId: network.id });
       // Default storages for network
       const defaultStorages = await this.dataSource
-        .getMongoRepository(ProductStorage)
+        .getRepository(ProductStorage)
         .find({ where: { networkId: network.id } });
       for (const storage of defaultStorages) {
         await this.dataSource
-          .getMongoRepository(ProductPrice)
-          .deleteMany({ storageId: storage.id });
+          .getRepository(ProductPrice)
+          .delete({ storageId: storage.id });
       }
       await this.dataSource
-        .getMongoRepository(ProductStorage)
-        .deleteMany({ networkId: network.id });
+        .getRepository(ProductStorage)
+        .delete({ networkId: network.id });
     }
     await this.dataSource
-      .getMongoRepository(ProductNetwork)
-      .deleteMany({ productId: new ObjectId(id) });
+      .getRepository(ProductNetwork)
+      .delete({ productId: id });
     // Regions
     const regions = await this.dataSource
-      .getMongoRepository(ProductRegion)
-      .find({ where: { productId: new ObjectId(id) } });
+      .getRepository(ProductRegion)
+      .find({ where: { productId: id } });
     for (const region of regions) {
       // Colors for region
       const regionColors = await this.dataSource
-        .getMongoRepository(ProductColor)
+        .getRepository(ProductColor)
         .find({ where: { regionId: region.id } });
       for (const color of regionColors) {
         // Storages for color
         const storages = await this.dataSource
-          .getMongoRepository(ProductStorage)
+          .getRepository(ProductStorage)
           .find({ where: { colorId: color.id } });
         for (const storage of storages) {
           await this.dataSource
-            .getMongoRepository(ProductPrice)
-            .deleteMany({ storageId: storage.id });
+            .getRepository(ProductPrice)
+            .delete({ storageId: storage.id });
         }
         await this.dataSource
-          .getMongoRepository(ProductStorage)
-          .deleteMany({ colorId: color.id });
+          .getRepository(ProductStorage)
+          .delete({ colorId: color.id });
       }
       await this.dataSource
-        .getMongoRepository(ProductColor)
-        .deleteMany({ regionId: region.id });
+        .getRepository(ProductColor)
+        .delete({ regionId: region.id });
       // Default storages for region
       const defaultStorages = await this.dataSource
-        .getMongoRepository(ProductStorage)
+        .getRepository(ProductStorage)
         .find({ where: { regionId: region.id } });
       for (const storage of defaultStorages) {
         await this.dataSource
-          .getMongoRepository(ProductPrice)
-          .deleteMany({ storageId: storage.id });
+          .getRepository(ProductPrice)
+          .delete({ storageId: storage.id });
       }
       await this.dataSource
-        .getMongoRepository(ProductStorage)
-        .deleteMany({ regionId: region.id });
+        .getRepository(ProductStorage)
+        .delete({ regionId: region.id });
     }
     await this.dataSource
-      .getMongoRepository(ProductRegion)
-      .deleteMany({ productId: new ObjectId(id) });
+      .getRepository(ProductRegion)
+      .delete({ productId: id });
     // Direct storages for direct colors
     const directColors = await this.dataSource
-      .getMongoRepository(ProductColor)
-      .find({ where: { productId: new ObjectId(id) } });
+      .getRepository(ProductColor)
+      .find({ where: { productId: id } });
     for (const color of directColors) {
       const storages = await this.dataSource
-        .getMongoRepository(ProductStorage)
+        .getRepository(ProductStorage)
         .find({ where: { colorId: color.id } });
       for (const storage of storages) {
         await this.dataSource
-          .getMongoRepository(ProductPrice)
-          .deleteMany({ storageId: storage.id });
+          .getRepository(ProductPrice)
+          .delete({ storageId: storage.id });
       }
       await this.dataSource
-        .getMongoRepository(ProductStorage)
-        .deleteMany({ colorId: color.id });
+        .getRepository(ProductStorage)
+        .delete({ colorId: color.id });
     }
     // Finally, delete the product itself
     await this.productRepository.delete(id);
@@ -2282,49 +2273,49 @@ export class ProductService {
     // 1. Load Top-level Relations manually
     if (!product.networks || product.networks.length === 0) {
       product.networks = await this.dataSource
-        .getMongoRepository(ProductNetwork)
+        .getRepository(ProductNetwork)
         .find({
-          where: { productId: new ObjectId(productId) } as any,
+          where: { productId: productId } as any,
           order: { displayOrder: 'ASC' },
         });
     }
     if (!product.regions || product.regions.length === 0) {
       product.regions = await this.dataSource
-        .getMongoRepository(ProductRegion)
+        .getRepository(ProductRegion)
         .find({
-          where: { productId: new ObjectId(productId) } as any,
+          where: { productId: productId } as any,
           order: { displayOrder: 'ASC' },
         });
     }
     if (!product.directColors || product.directColors.length === 0) {
       product.directColors = await this.dataSource
-        .getMongoRepository(ProductColor)
+        .getRepository(ProductColor)
         .find({
-          where: { productId: new ObjectId(productId) } as any,
+          where: { productId: productId } as any,
           order: { displayOrder: 'ASC' },
         });
     }
     if (!product.images || product.images.length === 0) {
       product.images = await this.dataSource
-        .getMongoRepository(ProductImage)
+        .getRepository(ProductImage)
         .find({
-          where: { productId: new ObjectId(productId) } as any,
+          where: { productId: productId } as any,
           order: { displayOrder: 'ASC' },
         });
     }
     if (!product.videos || product.videos.length === 0) {
       product.videos = await this.dataSource
-        .getMongoRepository(ProductVideo)
+        .getRepository(ProductVideo)
         .find({
-          where: { productId: new ObjectId(productId) } as any,
+          where: { productId: productId } as any,
           order: { displayOrder: 'ASC' },
         });
     }
     if (!product.specifications || product.specifications.length === 0) {
       product.specifications = await this.dataSource
-        .getMongoRepository(ProductSpecification)
+        .getRepository(ProductSpecification)
         .find({
-          where: { productId: new ObjectId(productId) } as any,
+          where: { productId: productId } as any,
           order: { displayOrder: 'ASC' },
         });
     }
@@ -2334,7 +2325,7 @@ export class ProductService {
       for (const network of product.networks) {
         // Load default storages for network
         const defaultStorages = await this.dataSource
-          .getMongoRepository(ProductStorage)
+          .getRepository(ProductStorage)
           .find({
             where: { networkId: network.id } as any,
             order: { displayOrder: 'ASC' },
@@ -2342,7 +2333,7 @@ export class ProductService {
 
         for (const storage of defaultStorages) {
           const price = await this.dataSource
-            .getMongoRepository(ProductPrice)
+            .getRepository(ProductPrice)
             .findOne({
               where: { storageId: storage.id } as any,
             });
@@ -2352,7 +2343,7 @@ export class ProductService {
 
         // Load colors for this network
         const colors = await this.dataSource
-          .getMongoRepository(ProductColor)
+          .getRepository(ProductColor)
           .find({
             where: { networkId: network.id } as any,
             order: { displayOrder: 'ASC' },
@@ -2361,7 +2352,7 @@ export class ProductService {
         for (const color of colors) {
           // Load storages for this color
           const storages = await this.dataSource
-            .getMongoRepository(ProductStorage)
+            .getRepository(ProductStorage)
             .find({
               where: { colorId: color.id } as any,
               order: { displayOrder: 'ASC' },
@@ -2370,7 +2361,7 @@ export class ProductService {
           // Load prices for storages
           for (const storage of storages) {
             const price = await this.dataSource
-              .getMongoRepository(ProductPrice)
+              .getRepository(ProductPrice)
               .findOne({
                 where: { storageId: storage.id } as any,
               });
@@ -2387,7 +2378,7 @@ export class ProductService {
       for (const region of product.regions) {
         // Load default storages
         const defaultStorages = await this.dataSource
-          .getMongoRepository(ProductStorage)
+          .getRepository(ProductStorage)
           .find({
             where: { regionId: region.id } as any,
             order: { displayOrder: 'ASC' },
@@ -2396,7 +2387,7 @@ export class ProductService {
         // Load prices for default storages
         for (const storage of defaultStorages) {
           const price = await this.dataSource
-            .getMongoRepository(ProductPrice)
+            .getRepository(ProductPrice)
             .findOne({
               where: { storageId: storage.id } as any,
             });
@@ -2406,7 +2397,7 @@ export class ProductService {
 
         // Load colors with their custom storages
         const colors = await this.dataSource
-          .getMongoRepository(ProductColor)
+          .getRepository(ProductColor)
           .find({
             where: { regionId: region.id } as any,
             order: { displayOrder: 'ASC' },
@@ -2415,7 +2406,7 @@ export class ProductService {
         for (const color of colors) {
           // Load custom storages for this color
           const storages = await this.dataSource
-            .getMongoRepository(ProductStorage)
+            .getRepository(ProductStorage)
             .find({
               where: { colorId: color.id } as any,
               order: { displayOrder: 'ASC' },
@@ -2424,7 +2415,7 @@ export class ProductService {
           // Load prices for custom storages
           for (const storage of storages) {
             const price = await this.dataSource
-              .getMongoRepository(ProductPrice)
+              .getRepository(ProductPrice)
               .findOne({
                 where: { storageId: storage.id } as any,
               });
@@ -2440,7 +2431,7 @@ export class ProductService {
     if (product.directColors && product.directColors.length > 0) {
       for (const color of product.directColors) {
         const storages = await this.dataSource
-          .getMongoRepository(ProductStorage)
+          .getRepository(ProductStorage)
           .find({
             where: { colorId: color.id } as any,
             order: { displayOrder: 'ASC' },
@@ -2448,7 +2439,7 @@ export class ProductService {
 
         for (const storage of storages) {
           const price = await this.dataSource
-            .getMongoRepository(ProductPrice)
+            .getRepository(ProductPrice)
             .findOne({
               where: { storageId: storage.id } as any,
             });
@@ -2461,19 +2452,17 @@ export class ProductService {
     // 5. Load Categories and Brands
     if (product.categoryIds && product.categoryIds.length > 0) {
       const categories = await this.dataSource
-        .getMongoRepository(Category)
+        .getRepository(Category)
         .find({
-          where: {
-            _id: { $in: product.categoryIds },
+          where: { id: In(product.categoryIds),
           } as any,
         });
       (product as any).categories = categories;
     }
 
     if (product.brandIds && product.brandIds.length > 0) {
-      const brands = await this.dataSource.getMongoRepository(Brand).find({
-        where: {
-          _id: { $in: product.brandIds },
+      const brands = await this.dataSource.getRepository(Brand).find({
+        where: { id: In(product.brandIds),
         } as any,
       });
       (product as any).brands = brands;
@@ -2932,22 +2921,22 @@ export class ProductService {
   //find by id
   async findById(id: string) {
     try {
-      const objectId = new ObjectId(id);
+      const idForQuery = id;
 
       const product = await this.productRepository.findOne({
-        where: { _id: objectId } as any,
+        where: { id: idForQuery } as any,
       });
 
       if (!product) {
         return null;
       }
 
-      // Manually load all relations for MongoDB
+      // Manually load all product relations.
       await this.loadProductRelations(product);
 
       return product;
     } catch (error) {
-      // If ObjectId conversion fails, return null
+      // If the lookup fails, return null.
       console.error('Error in findById:', error);
       return null;
     }
@@ -3009,9 +2998,9 @@ export class ProductService {
     },
   ) {
     try {
-      const objectId = new ObjectId(id);
+      const idForQuery = id;
       const care = await this.productCareRepository.findOne({
-        where: { _id: objectId } as any,
+        where: { id: idForQuery } as any,
       });
 
       if (!care) {
@@ -3076,9 +3065,9 @@ export class ProductService {
    */
   async getProductCareById(id: string) {
     try {
-      const objectId = new ObjectId(id);
+      const idForQuery = id;
       const care = await this.productCareRepository.findOne({
-        where: { _id: objectId } as any,
+        where: { id: idForQuery } as any,
       });
 
       if (!care) {
@@ -3145,9 +3134,9 @@ export class ProductService {
    */
   async deleteProductCare(id: string) {
     try {
-      const objectId = new ObjectId(id);
+      const idForQuery = id;
       const care = await this.productCareRepository.findOne({
-        where: { _id: objectId } as any,
+        where: { id: idForQuery } as any,
       });
 
       if (!care) {

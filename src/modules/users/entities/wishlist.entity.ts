@@ -1,15 +1,14 @@
-import { Entity, ObjectIdColumn, Column, CreateDateColumn } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 @Entity('wishlists')
 export class Wishlist {
-    @ObjectIdColumn()
-    id: ObjectId;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
-    @Column()
+    @Column({ type: 'uuid' })
     userId: string;
 
-    @Column()
+    @Column({ type: 'uuid' })
     productId: string;
 
     @CreateDateColumn()

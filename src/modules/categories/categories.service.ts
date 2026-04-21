@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ArrayContains, Repository } from 'typeorm';
 import {
   CreateCategoryDto,
   UpdateCategoryDto,
@@ -9,7 +9,6 @@ import {
 import { Category } from './entities/category.entity';
 import { Subcategory } from './entities/subcategory.entity';
 import { Product } from '../products/entities/product-new.entity';
-import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class CategoriesService {
@@ -24,8 +23,7 @@ export class CategoriesService {
   ) {}
 
   async getById(id: string): Promise<Category | null> {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    return this.categoryRepository.findOne({ where: { _id } } as any);
+    return this.categoryRepository.findOne({ where: { id } });
   }
   // SUBCATEGORY METHODS
   async createSubcategory(dto: any) {
@@ -35,13 +33,12 @@ export class CategoriesService {
   }
 
   async updateSubcategory(id: string, dto: any) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
     const data: Record<string, unknown> = { ...dto };
     if (dto.name) {
       data.slug = dto.name.toLowerCase().replace(/\s+/g, '-');
     }
-    await this.subcategoryRepository.update(_id, data);
-    return this.subcategoryRepository.findOne({ where: { _id } } as any);
+    await this.subcategoryRepository.update({ id }, data);
+    return this.subcategoryRepository.findOne({ where: { id } });
   }
 
   async getSubcategoriesByCategory(categoryId: string) {
@@ -49,8 +46,7 @@ export class CategoriesService {
   }
 
   async getSubcategory(id: string) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    return this.subcategoryRepository.findOne({ where: { _id } } as any);
+    return this.subcategoryRepository.findOne({ where: { id } });
   }
 
 
@@ -83,36 +79,29 @@ export class CategoriesService {
   async findProducts(slug: string, filters?: CategoryFilterDto) {
     const category = await this.categoryRepository.findOne({ where: { slug } });
     if (!category) throw new NotFoundException('Category not found');
-    // Find products where categoryId or categoryIds contains category._id
-    const query: any = [
+    const query: any[] = [
       { categoryId: category.id },
-      { categoryIds: { $in: [category.id] } },
+      { categoryIds: ArrayContains([category.id]) },
     ];
-    // Merge filters if provided
-    let filterQuery: any = { $or: query };
-    if (filters) {
-      Object.assign(filterQuery, filters);
-    }
-    return this.productRepository.find({ where: filterQuery });
+    const where = filters ? query.map((condition) => ({ ...condition, ...filters })) : query;
+    return this.productRepository.find({ where });
   }
 
 
 
-  async update(id: string | ObjectId, dto: UpdateCategoryDto) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
+  async update(id: string, dto: UpdateCategoryDto) {
     const data: Record<string, unknown> = { ...dto };
     if (dto.name) {
       data.slug = dto.name.toLowerCase().replace(/\s+/g, '-');
     }
-    await this.categoryRepository.update(_id, data);
-    return this.categoryRepository.findOne({ where: { _id } } as any);
+    await this.categoryRepository.update({ id }, data);
+    return this.categoryRepository.findOne({ where: { id } });
   }
 
 
 
-  async remove(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    await this.categoryRepository.delete(_id);
+  async remove(id: string) {
+    await this.categoryRepository.delete({ id });
     return { success: true };
   }
 

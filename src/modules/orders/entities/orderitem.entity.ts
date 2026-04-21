@@ -1,10 +1,9 @@
-import { Entity, ObjectIdColumn, Column } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('orderitems')
 export class OrderItem {
-    @ObjectIdColumn()
-    id: ObjectId;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column()
     productName: string;
@@ -66,10 +65,10 @@ export class OrderItem {
     @Column({ type: 'json', nullable: true })
     selectedVariants?: any;  // NEW FIELD - full variant object store korar jonno
 
-    @Column()
+    @Column({ type: 'uuid' })
     orderId: string;
 
-    @Column()
+    @Column({ type: 'uuid' })
     productId: string;
     // IMEI and serial moved to OrderItemUnit
 }

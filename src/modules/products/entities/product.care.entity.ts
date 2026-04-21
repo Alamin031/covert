@@ -1,16 +1,15 @@
 
-import { Entity, ObjectIdColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('product_cares')
 export class ProductCare {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ type: 'array', nullable: true })
+  @Column('uuid', { array: true, nullable: true })
   productIds?: string[];
 
-  @Column({ type: 'array', nullable: true })
+  @Column('uuid', { array: true, nullable: true })
   categoryIds?: string[];
 
   @Column()
@@ -25,7 +24,7 @@ export class ProductCare {
   @Column({ nullable: true })
   description?: string; // e.g., '2 years of extended warranty...'
 
-  @Column({ type: 'array', nullable: true })
+  @Column('text', { array: true, nullable: true })
   features?: string[]; // e.g., ['Accidental damage', 'Battery replacement', 'Express repair']
 
   @CreateDateColumn()

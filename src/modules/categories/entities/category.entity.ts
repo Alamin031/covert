@@ -1,14 +1,13 @@
-import { Entity, ObjectIdColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { ProductCare } from '../../products/entities/product.care.entity';
-import { ObjectId } from 'mongodb';
 
 import { Subcategory } from './subcategory.entity';
 // import { HomeCategory } from '../../homecategory/entities/homecategory.entity';
 
 @Entity('categories')
 export class Category {
-    @ObjectIdColumn()
-    id: ObjectId;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column({ unique: true })
     name: string;
@@ -27,15 +26,18 @@ export class Category {
 
 
 
-    @Column({ nullable: true })
+    @Column({ type: 'uuid', nullable: true })
     homeCategoryId?: string;
 
     // Brand association: which brand this category belongs to
-    @Column({ nullable: true })
+    @Column({ type: 'uuid', nullable: true })
     brandsId?: string;
 
+    @Column('uuid', { array: true, nullable: true })
+    faqIds?: string[];
 
-    @OneToMany(() => Subcategory, subcategory => subcategory.categoryId)
+
+    @OneToMany(() => Subcategory, subcategory => subcategory.category)
     subcategories?: Subcategory[];
 
 

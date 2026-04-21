@@ -1,11 +1,11 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, In } from 'typeorm';
+import { ArrayContains, Repository } from 'typeorm';
 import { CreateFaqDto, UpdateFaqDto } from './dto/faq.dto';
 import { FAQ } from './entities/faq.entity';
-import { ObjectId } from 'mongodb';
 import { Product } from '../products/entities/product-new.entity';
+import { Category } from '../categories/entities/category.entity';
 
 @Injectable()
 export class FaqsService {
@@ -15,6 +15,8 @@ export class FaqsService {
     private readonly faqRepository: Repository<FAQ>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    @InjectRepository(Category)
+    private readonly categoryRepository: Repository<Category>,
   ) { }
 
 
@@ -26,12 +28,11 @@ export class FaqsService {
     if (dto.productIds && Array.isArray(dto.productIds)) {
       await Promise.all(
         dto.productIds.map(async (productId) => {
-          const product = await this.productRepository.findOne({ where: { id: new ObjectId(productId) } });
+          const product = await this.productRepository.findOne({ where: { id: productId } });
           if (product) {
             if (!product.faqIds) product.faqIds = [];
-            const savedFaqObjectId = typeof savedFaq.id === 'string' ? new ObjectId(savedFaq.id) : savedFaq.id;
-            if (!product.faqIds.some((fid: ObjectId) => fid.equals(savedFaqObjectId))) {
-              product.faqIds.push(savedFaqObjectId);
+            if (!product.faqIds.includes(savedFaq.id)) {
+              product.faqIds.push(savedFaq.id);
               await this.productRepository.save(product);
             }
           }
@@ -40,15 +41,14 @@ export class FaqsService {
     }
     // If categoryIds are provided, update those categories' faqIds
     if (dto.categoryIds && Array.isArray(dto.categoryIds)) {
-      const categoryRepo = this.productRepository.manager.getRepository('Category');
       await Promise.all(
         dto.categoryIds.map(async (categoryId) => {
-          const category = await categoryRepo.findOne({ where: { id: new ObjectId(categoryId) } });
+          const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
           if (category) {
             if (!category.faqIds) category.faqIds = [];
-            if (!category.faqIds.includes(savedFaq.id.toString())) {
-              category.faqIds.push(savedFaq.id.toString());
-              await categoryRepo.save(category);
+            if (!category.faqIds.includes(savedFaq.id)) {
+              category.faqIds.push(savedFaq.id);
+              await this.categoryRepository.save(category);
             }
           }
         })
@@ -70,26 +70,24 @@ export class FaqsService {
 
   async findByProduct(productId: string) {
     return this.faqRepository.find({
-      where: { productIds: productId },
+      where: { productIds: ArrayContains([productId]) },
       order: { createdAt: 'DESC' },
     });
   }
 
 
 
-  async findOne(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    const faq = await this.faqRepository.findOne({ where: { _id: _id } } as any);
+  async findOne(id: string) {
+    const faq = await this.faqRepository.findOne({ where: { id } });
     if (!faq) throw new NotFoundException('FAQ not found');
     return faq;
   }
 
 
 
-  async update(id: string | ObjectId, dto: UpdateFaqDto) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    await this.faqRepository.update(_id, dto);
-    const updatedFaq = await this.faqRepository.findOne({ where: { _id: _id } } as any);
+  async update(id: string, dto: UpdateFaqDto) {
+    await this.faqRepository.update({ id }, dto);
+    const updatedFaq = await this.faqRepository.findOne({ where: { id } });
 
     // Sync productIds if provided
     if (dto.productIds && Array.isArray(dto.productIds)) {
@@ -97,8 +95,8 @@ export class FaqsService {
       const allProducts = await this.productRepository.find();
       await Promise.all(
         allProducts.map(async (product) => {
-          if (product.faqIds && product.faqIds.some((fid: ObjectId) => fid.equals(_id))) {
-            product.faqIds = product.faqIds.filter((fid: ObjectId) => !fid.equals(_id));
+          if (product.faqIds?.includes(id)) {
+            product.faqIds = product.faqIds.filter((fid) => fid !== id);
             await this.productRepository.save(product);
           }
         })
@@ -106,11 +104,11 @@ export class FaqsService {
       // Add this FAQ to selected products' faqIds
       await Promise.all(
         dto.productIds.map(async (productId) => {
-          const product = await this.productRepository.findOne({ where: { id: new ObjectId(productId) } });
+          const product = await this.productRepository.findOne({ where: { id: productId } });
           if (product) {
             if (!product.faqIds) product.faqIds = [];
-            if (!product.faqIds.some((fid: ObjectId) => fid.equals(_id))) {
-              product.faqIds.push(_id);
+            if (!product.faqIds.includes(id)) {
+              product.faqIds.push(id);
               await this.productRepository.save(product);
             }
           }
@@ -120,26 +118,24 @@ export class FaqsService {
 
     // Sync categoryIds if provided
     if (dto.categoryIds && Array.isArray(dto.categoryIds)) {
-      const categoryRepo = this.productRepository.manager.getRepository('Category');
-      // Remove this FAQ from all categories' faqIds first
-      const allCategories = await categoryRepo.find();
+      const allCategories = await this.categoryRepository.find();
       await Promise.all(
         allCategories.map(async (category) => {
-          if (category.faqIds && category.faqIds.includes(_id.toString())) {
-            category.faqIds = category.faqIds.filter(fid => fid !== _id.toString());
-            await categoryRepo.save(category);
+          if (category.faqIds?.includes(id)) {
+            category.faqIds = category.faqIds.filter(fid => fid !== id);
+            await this.categoryRepository.save(category);
           }
         })
       );
       // Add this FAQ to selected categories' faqIds
       await Promise.all(
         dto.categoryIds.map(async (categoryId) => {
-          const category = await categoryRepo.findOne({ where: { id: new ObjectId(categoryId) } });
+          const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
           if (category) {
             if (!category.faqIds) category.faqIds = [];
-            if (!category.faqIds.includes(_id.toString())) {
-              category.faqIds.push(_id.toString());
-              await categoryRepo.save(category);
+            if (!category.faqIds.includes(id)) {
+              category.faqIds.push(id);
+              await this.categoryRepository.save(category);
             }
           }
         })
@@ -151,9 +147,8 @@ export class FaqsService {
 
 
 
-  async remove(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    await this.faqRepository.delete(_id);
+  async remove(id: string) {
+    await this.faqRepository.delete({ id });
     return { success: true };
   }
 }

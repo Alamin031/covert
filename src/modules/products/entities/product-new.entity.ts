@@ -1,25 +1,28 @@
 import {
   Entity,
-  ObjectIdColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
   Index,
 } from 'typeorm';
-import { ObjectId } from 'mongodb';
 import { ProductRegion } from './product-region.entity';
 import { ProductColor } from './product-color.entity';
 import { ProductImage } from './product-image.entity';
 import { ProductVideo } from './product-video.entity';
 import { ProductSpecification } from './product-specification.entity';
 import { ProductNetwork } from './product-network.entity';
+import { Category } from '../../categories/entities/category.entity';
+import { Brand } from '../../brands/entities/brand.entity';
 
 @Entity('products')
 export class Product {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   name: string;
@@ -33,17 +36,25 @@ export class Product {
   @Column({ nullable: true })
   description?: string;
 
-  @Column({ nullable: true })
-  categoryId?: ObjectId;
+  @Column({ type: 'uuid', nullable: true })
+  categoryId?: string;
 
-  @Column({ nullable: true })
-  categoryIds?: ObjectId[];
+  @ManyToOne(() => Category, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'categoryId' })
+  category?: Category;
 
-  @Column({ nullable: true })
-  brandId?: ObjectId;
+  @Column('uuid', { array: true, nullable: true })
+  categoryIds?: string[];
 
-  @Column({ nullable: true })
-  brandIds?: ObjectId[];
+  @Column({ type: 'uuid', nullable: true })
+  brandId?: string;
+
+  @ManyToOne(() => Brand, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'brandId' })
+  brand?: Brand;
+
+  @Column('uuid', { array: true, nullable: true })
+  brandIds?: string[];
 
   @Column({ nullable: true, unique: true })
   productCode?: string;
@@ -115,14 +126,13 @@ export class Product {
   @Column({ nullable: true })
   seoDescription?: string;
 
-  // For Mongo just use normal arrays
-  @Column({ nullable: true })
+  @Column('text', { array: true, nullable: true })
   seoKeywords?: string[];
 
   @Column({ nullable: true })
   seoCanonical?: string;
 
-  @Column({ nullable: true })
+  @Column('text', { array: true, nullable: true })
   tags?: string[];
 
   @OneToMany(() => ProductRegion, (r) => r.product, {
@@ -164,10 +174,10 @@ export class Product {
   @DeleteDateColumn()
   deletedAt?: Date;
 
-  @Column({ nullable: true })
-  faqIds?: ObjectId[];
+  @Column('uuid', { array: true, nullable: true })
+  faqIds?: string[];
   
     // Field for client SEO-related HTML code
-    @Column({ nullable: true, type: 'string' })
+    @Column({ nullable: true, type: 'text' })
     schemaCode?: string;
 }

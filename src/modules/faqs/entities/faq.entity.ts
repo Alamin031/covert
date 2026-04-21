@@ -1,10 +1,9 @@
-import { Entity, ObjectIdColumn, Column, CreateDateColumn } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 @Entity('faqs')
 export class FAQ {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   question: string;
@@ -12,10 +11,10 @@ export class FAQ {
   @Column()
   answer: string;
 
-  @Column({ type: 'array', nullable: true })
+  @Column('uuid', { array: true, nullable: true })
   productIds?: string[];
 
-  @Column({ type: 'array', nullable: true })
+  @Column('uuid', { array: true, nullable: true })
   categoryIds?: string[];
 
   @Column({ nullable: true })

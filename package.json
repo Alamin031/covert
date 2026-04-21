@@ -19,7 +19,9 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed": "ts-node src/seeds/seed.ts",
-    "fix-indexes": "ts-node src/scripts/fix-mongodb-indexes.ts"
+    "migration:generate": "typeorm-ts-node-commonjs -d src/config/data-source.ts migration:generate src/migrations/PostgresMigration",
+    "migration:run": "typeorm-ts-node-commonjs -d src/config/data-source.ts migration:run",
+    "migration:revert": "typeorm-ts-node-commonjs -d src/config/data-source.ts migration:revert"
   },
   "dependencies": {
     "@faker-js/faker": "^10.1.0",
@@ -36,9 +38,9 @@
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
-    "mongodb": "^6.21.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",

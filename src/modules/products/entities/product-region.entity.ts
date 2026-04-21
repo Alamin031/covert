@@ -1,6 +1,6 @@
 import {
   Entity,
-  ObjectIdColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   ManyToOne,
@@ -8,17 +8,17 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { ObjectId } from 'mongodb';
 import { Product } from './product-new.entity';
 import { ProductColor } from './product-color.entity';
 import { ProductStorage } from './product-storage.entity';
 @Entity('product_regions')
-@Index(['productId', 'regionName'], { unique: true, sparse: true })
+@Index(['productId', 'regionName'], { unique: true })
 export class ProductRegion {
-  @ObjectIdColumn()
-  id: ObjectId;
-  @Column()
-  productId: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'uuid' })
+  productId: string;
 
   @Column()
   regionName: string;
@@ -30,7 +30,8 @@ export class ProductRegion {
   displayOrder: number;
 
   // Relations
-  @ManyToOne(() => Product, (product) => product.regions)
+  @ManyToOne(() => Product, (product) => product.regions, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'productId' })
   product: Product;
 
   @OneToMany(() => ProductColor, (color) => color.region, { cascade: true })

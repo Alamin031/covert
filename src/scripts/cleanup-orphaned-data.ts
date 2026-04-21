@@ -1,200 +1,141 @@
-import { DataSource } from 'typeorm';
-import { MongoClient } from 'mongodb';
+import AppDataSource from '../config/data-source';
 
-/**
- * Script to clean up orphaned data in the database
- * Run this when you have duplicate key errors or partial product data
- */
+const cleanupStatements = [
+  {
+    label: 'product regions without products',
+    sql: `
+      DELETE FROM "product_regions" pr
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "products" p WHERE p."id" = pr."productId"
+      )
+      RETURNING "id";
+    `,
+  },
+  {
+    label: 'product networks without products',
+    sql: `
+      DELETE FROM "product_networks" pn
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "products" p WHERE p."id" = pn."productId"
+      )
+      RETURNING "id";
+    `,
+  },
+  {
+    label: 'direct product colors without products',
+    sql: `
+      DELETE FROM "product_colors" pc
+      WHERE pc."productId" IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM "products" p WHERE p."id" = pc."productId"
+      )
+      RETURNING "id";
+    `,
+  },
+  {
+    label: 'region colors without regions',
+    sql: `
+      DELETE FROM "product_colors" pc
+      WHERE pc."regionId" IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM "product_regions" pr WHERE pr."id" = pc."regionId"
+      )
+      RETURNING "id";
+    `,
+  },
+  {
+    label: 'network colors without networks',
+    sql: `
+      DELETE FROM "product_colors" pc
+      WHERE pc."networkId" IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM "product_networks" pn WHERE pn."id" = pc."networkId"
+      )
+      RETURNING "id";
+    `,
+  },
+  {
+    label: 'storages without parent variants',
+    sql: `
+      DELETE FROM "product_storages" ps
+      WHERE (
+        ps."colorId" IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM "product_colors" pc WHERE pc."id" = ps."colorId"
+        )
+      )
+      OR (
+        ps."regionId" IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM "product_regions" pr WHERE pr."id" = ps."regionId"
+        )
+      )
+      OR (
+        ps."networkId" IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM "product_networks" pn WHERE pn."id" = ps."networkId"
+        )
+      )
+      RETURNING "id";
+    `,
+  },
+  {
+    label: 'prices without storages',
+    sql: `
+      DELETE FROM "product_prices" pp
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "product_storages" ps WHERE ps."id" = pp."storageId"
+      )
+      RETURNING "id";
+    `,
+  },
+  {
+    label: 'images without products',
+    sql: `
+      DELETE FROM "product_images" pi
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "products" p WHERE p."id" = pi."productId"
+      )
+      RETURNING "id";
+    `,
+  },
+  {
+    label: 'videos without products',
+    sql: `
+      DELETE FROM "product_videos" pv
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "products" p WHERE p."id" = pv."productId"
+      )
+      RETURNING "id";
+    `,
+  },
+  {
+    label: 'specifications without products',
+    sql: `
+      DELETE FROM "product_specifications" ps
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "products" p WHERE p."id" = ps."productId"
+      )
+      RETURNING "id";
+    `,
+  },
+];
+
 async function cleanupOrphanedData() {
-  const mongoUrl = process.env.DATABASE_URL || 'mongodb://localhost:27017/fd_telecom';
-  const client = new MongoClient(mongoUrl);
+  await AppDataSource.initialize();
 
   try {
-    await client.connect();
-    console.log('Connected to MongoDB');
-
-    const db = client.db();
-
-    // Find and remove regions with null regionName
-    console.log('\n1. Finding regions with null regionName...');
-    const regionsWithNullName = await db
-      .collection('product_regions')
-      .find({ regionName: null })
-      .toArray();
-    
-    console.log(`Found ${regionsWithNullName.length} regions with null regionName`);
-    
-    if (regionsWithNullName.length > 0) {
-      const deleteResult = await db
-        .collection('product_regions')
-        .deleteMany({ regionName: null });
-      console.log(`Deleted ${deleteResult.deletedCount} regions with null regionName`);
+    for (const statement of cleanupStatements) {
+      const rows = await AppDataSource.query(statement.sql);
+      console.log(`Deleted ${rows.length} ${statement.label}`);
     }
-
-    // Find and remove colors with null colorName
-    console.log('\n2. Finding colors with null colorName...');
-    const colorsWithNullName = await db
-      .collection('product_colors')
-      .find({ colorName: null })
-      .toArray();
-    
-    console.log(`Found ${colorsWithNullName.length} colors with null colorName`);
-    
-    if (colorsWithNullName.length > 0) {
-      const deleteResult = await db
-        .collection('product_colors')
-        .deleteMany({ colorName: null });
-      console.log(`Deleted ${deleteResult.deletedCount} colors with null colorName`);
-    }
-
-    // Find orphaned regions (regions whose products don't exist)
-    console.log('\n3. Finding orphaned regions...');
-    const allRegions = await db.collection('product_regions').find().toArray();
-    const allProducts = await db.collection('products').find().toArray();
-    const productIds = new Set(allProducts.map(p => p._id.toString()));
-    
-    const orphanedRegions = allRegions.filter(
-      region => !productIds.has(region.productId?.toString())
-    );
-    
-    console.log(`Found ${orphanedRegions.length} orphaned regions`);
-    
-    if (orphanedRegions.length > 0) {
-      const orphanedRegionIds = orphanedRegions.map(r => r._id);
-      const deleteResult = await db
-        .collection('product_regions')
-        .deleteMany({ _id: { $in: orphanedRegionIds } });
-      console.log(`Deleted ${deleteResult.deletedCount} orphaned regions`);
-    }
-
-    // Find orphaned colors (colors whose regions/products don't exist)
-    console.log('\n4. Finding orphaned colors...');
-    const allColors = await db.collection('product_colors').find().toArray();
-    const regionIds = new Set(allRegions.map(r => r._id.toString()));
-    
-    const orphanedColors = allColors.filter(color => {
-      if (color.productId && !productIds.has(color.productId.toString())) {
-        return true;
-      }
-      if (color.regionId && !regionIds.has(color.regionId.toString())) {
-        return true;
-      }
-      return false;
-    });
-    
-    console.log(`Found ${orphanedColors.length} orphaned colors`);
-    
-    if (orphanedColors.length > 0) {
-      const orphanedColorIds = orphanedColors.map(c => c._id);
-      const deleteResult = await db
-        .collection('product_colors')
-        .deleteMany({ _id: { $in: orphanedColorIds } });
-      console.log(`Deleted ${deleteResult.deletedCount} orphaned colors`);
-    }
-
-    // Find orphaned storages
-    console.log('\n5. Finding orphaned storages...');
-    const allStorages = await db.collection('product_storages').find().toArray();
-    const colorIds = new Set(allColors.map(c => c._id.toString()));
-    
-    const orphanedStorages = allStorages.filter(
-      storage => storage.colorId && !colorIds.has(storage.colorId.toString())
-    );
-    
-    console.log(`Found ${orphanedStorages.length} orphaned storages`);
-    
-    if (orphanedStorages.length > 0) {
-      const orphanedStorageIds = orphanedStorages.map(s => s._id);
-      const deleteResult = await db
-        .collection('product_storages')
-        .deleteMany({ _id: { $in: orphanedStorageIds } });
-      console.log(`Deleted ${deleteResult.deletedCount} orphaned storages`);
-    }
-
-    // Find orphaned prices
-    console.log('\n6. Finding orphaned prices...');
-    const allPrices = await db.collection('product_prices').find().toArray();
-    const storageIds = new Set(allStorages.map(s => s._id.toString()));
-    
-    const orphanedPrices = allPrices.filter(
-      price => price.storageId && !storageIds.has(price.storageId.toString())
-    );
-    
-    console.log(`Found ${orphanedPrices.length} orphaned prices`);
-    
-    if (orphanedPrices.length > 0) {
-      const orphanedPriceIds = orphanedPrices.map(p => p._id);
-      const deleteResult = await db
-        .collection('product_prices')
-        .deleteMany({ _id: { $in: orphanedPriceIds } });
-      console.log(`Deleted ${deleteResult.deletedCount} orphaned prices`);
-    }
-
-    // Find orphaned images
-    console.log('\n7. Finding orphaned images...');
-    const allImages = await db.collection('product_images').find().toArray();
-    
-    const orphanedImages = allImages.filter(
-      image => !productIds.has(image.productId?.toString())
-    );
-    
-    console.log(`Found ${orphanedImages.length} orphaned images`);
-    
-    if (orphanedImages.length > 0) {
-      const orphanedImageIds = orphanedImages.map(i => i._id);
-      const deleteResult = await db
-        .collection('product_images')
-        .deleteMany({ _id: { $in: orphanedImageIds } });
-      console.log(`Deleted ${deleteResult.deletedCount} orphaned images`);
-    }
-
-    // Find orphaned videos
-    console.log('\n8. Finding orphaned videos...');
-    const allVideos = await db.collection('product_videos').find().toArray();
-    
-    const orphanedVideos = allVideos.filter(
-      video => !productIds.has(video.productId?.toString())
-    );
-    
-    console.log(`Found ${orphanedVideos.length} orphaned videos`);
-    
-    if (orphanedVideos.length > 0) {
-      const orphanedVideoIds = orphanedVideos.map(v => v._id);
-      const deleteResult = await db
-        .collection('product_videos')
-        .deleteMany({ _id: { $in: orphanedVideoIds } });
-      console.log(`Deleted ${deleteResult.deletedCount} orphaned videos`);
-    }
-
-    // Find orphaned specifications
-    console.log('\n9. Finding orphaned specifications...');
-    const allSpecs = await db.collection('product_specifications').find().toArray();
-    
-    const orphanedSpecs = allSpecs.filter(
-      spec => !productIds.has(spec.productId?.toString())
-    );
-    
-    console.log(`Found ${orphanedSpecs.length} orphaned specifications`);
-    
-    if (orphanedSpecs.length > 0) {
-      const orphanedSpecIds = orphanedSpecs.map(s => s._id);
-      const deleteResult = await db
-        .collection('product_specifications')
-        .deleteMany({ _id: { $in: orphanedSpecIds } });
-      console.log(`Deleted ${deleteResult.deletedCount} orphaned specifications`);
-    }
-
-    console.log('\n✅ Cleanup completed successfully!');
-
-  } catch (error) {
-    console.error('Error during cleanup:', error);
-    process.exit(1);
+    console.log('PostgreSQL orphan cleanup completed successfully.');
   } finally {
-    await client.close();
-    console.log('MongoDB connection closed');
-    process.exit(0);
+    await AppDataSource.destroy();
   }
 }
 
-// Run the cleanup
-cleanupOrphanedData();
+cleanupOrphanedData().catch((error) => {
+  console.error('Error during PostgreSQL cleanup:', error);
+  process.exit(1);
+});

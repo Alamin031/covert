@@ -7,7 +7,6 @@ import {
 import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ObjectId } from 'mongodb';
 
 import { CreateUserDto } from './dto/user.dto';
 import { User } from './entities/user.entity';
@@ -33,13 +32,6 @@ export class UsersService {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
   ) {}
-
-  // ==========================
-  // UTIL
-  // ==========================
-  private toObjectId(id: string | ObjectId): ObjectId {
-    return typeof id === 'string' ? new ObjectId(id) : id;
-  }
 
   private sanitize(user: User) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -112,14 +104,10 @@ export class UsersService {
   // ==========================
   // GET ONE
   // ==========================
-  async findOne(id: string | ObjectId) {
-    const _id = this.toObjectId(id);
-
-
-    // Use raw query for MongoDB compatibility
+  async findOne(id: string) {
     const user = await this.userRepository.findOne({
-      where: { _id: _id },
-    } as any);
+      where: { id },
+    });
 
     if (!user) throw new NotFoundException('User not found');
     const { password, ...rest } = user as any;
@@ -129,13 +117,8 @@ export class UsersService {
   }
 
 
-   async getMyRewardPoints(userId: string | ObjectId): Promise<number> {
-    const _id = this.toObjectId(userId);
-    // Try both 'id' and '_id' for MongoDB compatibility
-    let user = await this.userRepository.findOne({ where: { id: _id } });
-    if (!user) {
-      user = await this.userRepository.findOne({ where: { _id: _id } } as any);
-    }
+   async getMyRewardPoints(userId: string): Promise<number> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     return user.myrewardPoints || 0;
   }
@@ -149,15 +132,13 @@ export class UsersService {
   // ==========================
   // UPDATE ROLE
   // ==========================
-  async updateRole(id: string | ObjectId, role: string) {
+  async updateRole(id: string, role: string) {
     if (!['user', 'admin', 'management'].includes(role)) {
       throw new BadRequestException('Invalid role');
     }
 
-    const _id = this.toObjectId(id);
-
     const user = await this.userRepository.findOne({
-      where: { id: _id },
+      where: { id },
     });
 
     if (!user) throw new NotFoundException('User not found');
@@ -176,14 +157,8 @@ export class UsersService {
   // ==========================
   // UPDATE USER
   // ==========================
-  async update(id: string | ObjectId, payload: Partial<CreateUserDto>) {
-    const _id = this.toObjectId(id);
-
-    // Try both 'id' and '_id' for MongoDB compatibility
-    let user = await this.userRepository.findOne({ where: { id: _id } });
-    if (!user) {
-      user = await this.userRepository.findOne({ where: { _id: _id } } as any);
-    }
+  async update(id: string, payload: Partial<CreateUserDto>) {
+    const user = await this.userRepository.findOne({ where: { id } });
 
     if (!user) throw new NotFoundException('User not found');
 
@@ -201,10 +176,8 @@ export class UsersService {
   // ==========================
   // DELETE USER
   // ==========================
-  async remove(id: string | ObjectId) {
-    const _id = this.toObjectId(id);
-
-    const result = await this.userRepository.delete(_id);
+  async remove(id: string) {
+    const result = await this.userRepository.delete({ id });
     if (!result.affected) {
       throw new NotFoundException('User not found');
     }

@@ -3,14 +3,13 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ObjectIdColumn,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
-import { ObjectId } from 'mongodb';
 
 @Entity('orders')
 export class Order {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'json', nullable: true })
   customer?: any;

@@ -10,7 +10,6 @@ import { AssignOrderItemUnitsDto } from './dto/assign-units.dto';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/orderitem.entity';
 import { OrderItemUnit } from './entities/order-item-unit.entity';
-import { ObjectId } from 'mongodb';
 
 import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
@@ -110,16 +109,10 @@ export class OrdersService {
       const productColorRepo =
         this.orderRepository.manager.getRepository('ProductColor');
       const productRepo = this.orderRepository.manager.getRepository('Product');
-      const { ObjectId } = require('mongodb');
       for (const item of savedOrder.orderItems) {
         if (item.storage) {
           // Query ProductPrice by storageId, not id
-          let storageId = item.storage;
-          if (typeof storageId === 'string' && storageId.length === 24) {
-            try {
-              storageId = new ObjectId(storageId);
-            } catch (e) {}
-          }
+          const storageId = item.storage;
 
           const price = await productPriceRepo.findOne({
             where: { storageId },
@@ -137,66 +130,36 @@ export class OrdersService {
           let colorQuery: any = {};
           let color: any = null;
           if (item.region) {
-            let regionId = item.region;
-            if (typeof regionId === 'string' && regionId.length === 24) {
-              try {
-                regionId = new ObjectId(regionId);
-              } catch (e) {}
-            }
+            const regionId = item.region;
             colorQuery = { regionId, colorName: item.colorName };
 
             color = await productColorRepo.findOne({ where: colorQuery });
             if (!color) {
               // Try fallback: productId + colorName
-              let productId = item.productId;
-              if (typeof productId === 'string' && productId.length === 24) {
-                try {
-                  productId = new ObjectId(productId);
-                } catch (e) {}
-              }
+              const productId = item.productId;
               const fallbackQuery = { productId, colorName: item.colorName };
 
               color = await productColorRepo.findOne({ where: fallbackQuery });
             }
           } else if (item.network) {
-            let networkId = item.network;
-            if (typeof networkId === 'string' && networkId.length === 24) {
-              try {
-                networkId = new ObjectId(networkId);
-              } catch (e) {}
-            }
+            const networkId = item.network;
             colorQuery = { networkId, colorName: item.colorName };
 
             color = await productColorRepo.findOne({ where: colorQuery });
             if (!color) {
               // Try fallback: productId + colorName
-              let productId = item.productId;
-              if (typeof productId === 'string' && productId.length === 24) {
-                try {
-                  productId = new ObjectId(productId);
-                } catch (e) {}
-              }
+              const productId = item.productId;
               const fallbackQuery = { productId, colorName: item.colorName };
 
               color = await productColorRepo.findOne({ where: fallbackQuery });
             }
           } else if (item.productId && item.colorName) {
-            let productId = item.productId;
-            if (typeof productId === 'string' && productId.length === 24) {
-              try {
-                productId = new ObjectId(productId);
-              } catch (e) {}
-            }
+            const productId = item.productId;
             colorQuery = { productId, colorName: item.colorName };
 
             color = await productColorRepo.findOne({ where: colorQuery });
           } else {
-            let colorId = item.color;
-            if (typeof colorId === 'string' && colorId.length === 24) {
-              try {
-                colorId = new ObjectId(colorId);
-              } catch (e) {}
-            }
+            const colorId = item.color;
             colorQuery = { id: colorId };
 
             color = await productColorRepo.findOne({ where: colorQuery });
@@ -217,14 +180,7 @@ export class OrdersService {
             await productColorRepo.save(color);
           } else {
             // If no ProductColor found, try to decrement main Product stock (for basic products)
-            let productId = item.productId;
-            if (typeof productId === 'string' && productId.length === 24) {
-              try {
-                productId = new ObjectId(productId);
-              } catch (e) {
-                console.log('Invalid ObjectId for product:', item.productId);
-              }
-            }
+            const productId = item.productId;
 
             const product = await productRepo.findOne({
               where: { id: productId },
@@ -240,14 +196,7 @@ export class OrdersService {
           }
         } else {
           // If neither storage nor color, try to decrement main Product stock
-          let productId = item.productId;
-          if (typeof productId === 'string' && productId.length === 24) {
-            try {
-              productId = new ObjectId(productId);
-            } catch (e) {
-              console.log('Invalid ObjectId for product:', item.productId);
-            }
-          }
+          const productId = item.productId;
 
           const product = await productRepo.findOne({
             where: { id: productId },
@@ -327,14 +276,8 @@ export class OrdersService {
     return orders;
   }
 
-  async findOne(id: string | ObjectId): Promise<Order> {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    let order = await this.orderRepository.findOne({ where: { id: _id } });
-    if (!order) {
-      order = await this.orderRepository.findOne({
-        where: { _id: _id },
-      } as any);
-    }
+  async findOne(id: string): Promise<Order> {
+    const order = await this.orderRepository.findOne({ where: { id } });
     if (!order) throw new NotFoundException('Order not found');
     const items = await this.orderItemRepository.find({
       where: { orderId: String(order.id) },
@@ -388,7 +331,7 @@ export class OrdersService {
   }
 
   async getOrderTracking(id: string) {
-    // Now fetch by orderNumber instead of id/_id
+    // Fetch by order number for the public tracking endpoint.
     const order = await this.orderRepository.findOne({
       where: { orderNumber: id },
     });
@@ -494,12 +437,11 @@ export class OrdersService {
     async assignUnits(orderId: string, dto: AssignOrderItemUnitsDto[]) {
     console.log('[Orders] assignUnits called', { orderId, items: dto?.length ?? 0 });
     for (const item of dto) {
-      // Validate orderItemId before converting to ObjectId
       let orderItem: OrderItem | null = null as any;
       try {
-        if (typeof item.orderItemId === 'string' && ObjectId.isValid(item.orderItemId)) {
+        if (typeof item.orderItemId === 'string' && !item.orderItemId.startsWith('item-')) {
           orderItem = await this.orderItemRepository.findOne({
-            where: { id: new ObjectId(item.orderItemId) } as any,
+            where: { id: item.orderItemId },
           });
         } else if (typeof item.orderItemId === 'string') {
           // Support client temporary ids like `item-0` by mapping to saved order items by index
@@ -519,7 +461,7 @@ export class OrdersService {
               continue;
             }
           } else {
-            console.warn('[Orders] assignUnits: invalid orderItemId (not an ObjectId)', { orderItemId: item.orderItemId });
+            console.warn('[Orders] assignUnits: invalid orderItemId', { orderItemId: item.orderItemId });
             continue;
           }
         } else {
@@ -540,7 +482,7 @@ export class OrdersService {
         const saved = await this.orderItemUnitRepo.save(
           this.orderItemUnitRepo.create({
             orderId,
-            orderItemId: item.orderItemId,
+            orderItemId: String(orderItem.id),
             productId: orderItem.productId,
             imei: unit.imei,
             serial: unit.serial,
@@ -560,20 +502,10 @@ export class OrdersService {
   }
 
   async updateStatus(
-    id: string | ObjectId,
+    id: string,
     dto: UpdateOrderStatusDto,
   ): Promise<Order> {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    console.log('updateStatus called with _id:', _id);
-    // Always try _id first for MongoDB compatibility
-    let order = await this.orderRepository.findOne({
-      where: { _id: _id },
-    } as any);
-    console.log('Order found by _id:', order);
-    if (!order) {
-      order = await this.orderRepository.findOne({ where: { id: _id } });
-      console.log('Order found by id:', order);
-    }
+    const order = await this.orderRepository.findOne({ where: { id } });
     if (!order) throw new NotFoundException('Order not found');
     // Update status and push to statusHistory
     const newStatusEntry = { status: dto.status, date: new Date() };
@@ -591,8 +523,7 @@ export class OrdersService {
       paymentStatus = 'completed';
     }
 
-    // Always update using _id as primary key for MongoDB
-    await this.orderRepository.update(_id, {
+    await this.orderRepository.update({ id }, {
       status: dto.status,
       statusHistory: updatedHistory,
       paymentStatus,
@@ -601,11 +532,10 @@ export class OrdersService {
     // অর্ডার delivered হলে অটো ওয়ারেন্টি এন্ট্রি এবং reward points যোগ
     if (dto.status === 'delivered') {
       // একাধিক অর্ডার আইটেম থাকলে প্রত্যেকটির জন্য ওয়ারেন্টি এন্ট্রি
-      // Always use _id for MongoDB
-      const updatedOrder = await this.orderRepository.findOne({ where: { _id: _id } } as any);
+      const updatedOrder = await this.orderRepository.findOne({ where: { id } });
       console.log('[Warranty] updatedOrder:', updatedOrder);
       if (!updatedOrder || !updatedOrder.id) {
-        console.error('[Warranty] Cannot process warranty: updatedOrder or updatedOrder.id missing. _id:', _id, 'updatedOrder:', updatedOrder);
+        console.error('[Warranty] Cannot process warranty: updatedOrder or updatedOrder.id missing. id:', id, 'updatedOrder:', updatedOrder);
         // Return the original order object after update
         return order;
       } else {
@@ -653,7 +583,7 @@ export class OrdersService {
               if (createdId) {
                 // Mark this unit as delivered (status)
                 try {
-                  await this.orderItemUnitRepo.update({ id: new ObjectId(String(unit.id)) } as any, { status: 'delivered' } as any);
+                  await this.orderItemUnitRepo.update({ id: String(unit.id) }, { status: 'delivered' } as any);
                 } catch (e) {
                   console.warn('[Warranty] Failed to update unit status for', unit.id, e);
                 }
@@ -668,7 +598,7 @@ export class OrdersService {
                       console.log('[Warranty] duplicate unit', { id: dupId, status: dup.status, orderId: dup.orderId });
                       if (dupId !== thisUnitId && dup.status !== 'delivered') {
                         try {
-                          await this.orderItemUnitRepo.delete({ id: new ObjectId(String(dup.id)) } as any);
+                          await this.orderItemUnitRepo.delete({ id: String(dup.id) });
                           console.log('[Warranty] removed duplicate unit', dupId, 'for IMEI', imei, 'status', dup.status);
                         } catch (e) {
                           console.warn('[Warranty] failed to delete duplicate unit', dupId, e);
@@ -689,7 +619,7 @@ export class OrdersService {
                     console.log('[Warranty] duplicate unit (skipped case)', { id: dupId, status: dup.status, orderId: dup.orderId });
                     if (dupId !== thisUnitId && dup.status !== 'delivered') {
                       try {
-                        await this.orderItemUnitRepo.delete({ id: new ObjectId(String(dup.id)) } as any);
+                        await this.orderItemUnitRepo.delete({ id: String(dup.id) });
                         console.log('[Warranty] removed assigned unit', dupId, 'because IMEI already has warranty', existing && existing.id);
                       } catch (e) {
                         console.warn('[Warranty] failed to delete assigned unit', dupId, e);
@@ -727,11 +657,11 @@ export class OrdersService {
         } catch (e) {
           console.error('[RewardPoints] Error updating user points:', e);
         }
-        const orderResponse = await this.findOne(_id);
+        const orderResponse = await this.findOne(id);
         return { ...orderResponse, warrantyResults } as any;
       }
     }
-    return this.findOne(_id);
+    return this.findOne(id);
   }
 
   calculateEMI(dto: EMICalculationDto) {

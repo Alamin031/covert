@@ -7,7 +7,6 @@ import { UpdateNotificationReadDto } from './dto/update-notification-read.dto';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { UsersService } from '../users/users.service';
 import { ProductService } from '../products/products.service';
-import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class NotificationService {
@@ -29,15 +28,8 @@ export class NotificationService {
   }
 
   // Update a notification as read (auto-update to true)
-  async markNotificationAsRead(id: string | ObjectId) {
-    console.log('markNotificationAsRead called with id:', id);
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    console.log('markNotificationAsRead - id:', id, ' _id:', _id);
-    // Try both _id and id fields for compatibility
-    let notification = await this.notificationRepository.findOne({ where: { _id } } as any);
-    if (!notification) {
-      notification = await this.notificationRepository.findOne({ where: { id: _id } } as any);
-    }
+  async markNotificationAsRead(id: string) {
+    const notification = await this.notificationRepository.findOne({ where: { id } });
     if (!notification) throw new NotFoundException('Notification not found');
     notification.read = true;
     return this.notificationRepository.save(notification);
@@ -60,13 +52,8 @@ export class NotificationService {
     });
   }
   // Mark notification as resolved
-  async markAsResolved(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    // Try both _id and id fields for compatibility
-    let notification = await this.notificationRepository.findOne({ where: { _id } } as any);
-    if (!notification) {
-      notification = await this.notificationRepository.findOne({ where: { id: _id } } as any);
-    }
+  async markAsResolved(id: string) {
+    const notification = await this.notificationRepository.findOne({ where: { id } });
     if (!notification) throw new NotFoundException('Notification not found');
     notification.resolved = true;
     notification.status = 'resolved';
@@ -139,9 +126,8 @@ async findAllByUserAndProduct(userId?: string, productId?: string) {
 
 
 
-  async markAsRead(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    const notification = await this.notificationRepository.findOne({ where: { id: _id } });
+  async markAsRead(id: string) {
+    const notification = await this.notificationRepository.findOne({ where: { id } });
     if (!notification) throw new NotFoundException('Notification not found');
     notification.read = true;
     return this.notificationRepository.save(notification);
@@ -149,9 +135,8 @@ async findAllByUserAndProduct(userId?: string, productId?: string) {
 
 
 
-  async remove(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    await this.notificationRepository.delete(_id);
+  async remove(id: string) {
+    await this.notificationRepository.delete({ id });
     return { success: true };
   }
 

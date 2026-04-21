@@ -1,12 +1,11 @@
-import { Entity, ObjectIdColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 // import { Category } from '../../categories/entities/category.entity';
 // import { Product } from '../../products/entities/product.entity';
-import { ObjectId } from 'mongodb';
 
 @Entity('homecategories')
 export class HomeCategory {
-    @ObjectIdColumn()
-    id: ObjectId;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column({ unique: true })
     name: string;
@@ -16,13 +15,13 @@ export class HomeCategory {
     priority?: number;
 
 
-    @Column({ type: 'array', nullable: true })
+    @Column('uuid', { array: true, nullable: true })
     categoryIds?: string[];
 
 
 
 
-    @Column({ type: 'array', nullable: true })
+    @Column('uuid', { array: true, nullable: true })
     productIds?: string[];
 
 

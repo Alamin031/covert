@@ -1,10 +1,9 @@
-import { ObjectId } from 'mongodb';
-import { Entity, ObjectIdColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 @Entity('corporate_deals')
 export class CorporateDeal {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   fullName: string;
@@ -21,9 +20,9 @@ export class CorporateDeal {
   @Column({ nullable: true })
   message?: string;
 
-  @Column({ default: () => 'new' })
+  @Column({ default: 'new' })
   status: string; // e.g., new, contacted, closed
 
-  @Column({ default: () => 'now()' })
+  @CreateDateColumn()
   createdAt: Date;
 }

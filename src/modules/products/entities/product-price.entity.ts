@@ -1,22 +1,21 @@
 import {
   Entity,
-  ObjectIdColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
   JoinColumn,
 } from 'typeorm';
-import { ObjectId } from 'mongodb';
 import { ProductStorage } from './product-storage.entity';
 
 @Entity('product_prices')
 export class ProductPrice {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ unique: true })
-  storageId: ObjectId;
+  @Column({ type: 'uuid', unique: true })
+  storageId: string;
 
   @Column()
   regularPrice: number;
@@ -46,7 +45,8 @@ export class ProductPrice {
   lowStockAlert: number;
 
   // Relations
-  @OneToOne(() => ProductStorage, (storage) => storage.price)
+  @OneToOne(() => ProductStorage, (storage) => storage.price, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'storageId' })
   storage: ProductStorage;
 
   @CreateDateColumn()

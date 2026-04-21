@@ -1,10 +1,10 @@
-import { Entity, ObjectIdColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Category } from './category.entity';
 
 @Entity('subcategories')
 export class Subcategory {
-    @ObjectIdColumn()
-    id: ObjectId;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column({ unique: true })
     name: string;
@@ -21,8 +21,15 @@ export class Subcategory {
     @Column({ nullable: true })
     priority?: number;
 
-    @Column({ nullable: true })
+    @Column({ type: 'uuid', nullable: true })
     categoryId?: string;
+
+    @ManyToOne(() => Category, category => category.subcategories, {
+        nullable: true,
+        onDelete: 'SET NULL',
+    })
+    @JoinColumn({ name: 'categoryId' })
+    category?: Category;
 
     @CreateDateColumn()
     createdAt: Date;

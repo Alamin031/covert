@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category } from '../categories/entities/category.entity';
 import { Brand } from '../brands/entities/brand.entity';
-import { ObjectId } from 'mongodb';
 import { Product } from '../products/entities/product-new.entity';
 
 @Injectable()
@@ -17,30 +16,27 @@ export class SeoService {
     private readonly brandRepo: Repository<Brand>,
   ) { }
 
-  async getProductSeo(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
+  async getProductSeo(id: string) {
     const product = await this.productRepo.findOne({
-      where: { id: _id },
+      where: { id },
       select: ['seoTitle', 'seoDescription', 'seoKeywords', 'slug'],
     });
     if (!product) throw new NotFoundException('Product not found');
     return product;
   }
 
-  async getCategorySeo(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
+  async getCategorySeo(id: string) {
     const category = await this.categoryRepo.findOne({
-      where: { id: _id },
+      where: { id },
       select: ['name', 'description', 'slug'],
     });
     if (!category) throw new NotFoundException('Category not found');
     return category;
   }
 
-  async getBrandSeo(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
+  async getBrandSeo(id: string) {
     const brand = await this.brandRepo.findOne({
-      where: { id: _id },
+      where: { id },
       select: ['name', 'slug'],
     });
     if (!brand) throw new NotFoundException('Brand not found');

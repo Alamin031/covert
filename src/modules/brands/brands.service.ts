@@ -9,8 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateBrandDto, UpdateBrandDto } from './dto/brand.dto';
 import { Brand } from './entities/brand.entity';
-import { ObjectId } from 'mongodb';
 import { ProductService } from '../products/products.service';
+import { isUuid } from '../../common/utils/id.util';
 
 @Injectable()
 export class BrandsService {
@@ -23,11 +23,9 @@ export class BrandsService {
   async create(dto: CreateBrandDto) {
     const slug = dto.name.toLowerCase().replace(/\s+/g, '-');
 
-    // 🔍 Check if brand with same name OR slug already exists
+    // Check if brand with same name OR slug already exists
     const exists = await this.brandRepository.findOne({
-      where: {
-        $or: [{ name: dto.name }, { slug }],
-      } as any,
+      where: [{ name: dto.name }, { slug }],
     });
 
     if (exists) {
@@ -54,17 +52,9 @@ export class BrandsService {
   }
 
   async findOne(idOrSlug: string) {
-    let brand;
-    try {
-      // Try to treat as ObjectId
-      const objectId = new ObjectId(idOrSlug);
-      brand = await this.brandRepository.findOne({
-        where: { _id: objectId },
-      } as any);
-    } catch {
-      // Fallback to slug
-      brand = await this.brandRepository.findOne({ where: { slug: idOrSlug } });
-    }
+    const brand = isUuid(idOrSlug)
+      ? await this.brandRepository.findOne({ where: { id: idOrSlug } })
+      : await this.brandRepository.findOne({ where: { slug: idOrSlug } });
     if (!brand) throw new NotFoundException('Brand not found');
     return {
       id: brand.id?.toString?.() ?? String(brand.id),
@@ -81,21 +71,19 @@ export class BrandsService {
   async findProducts(slug: string) {
     const brand = await this.brandRepository.findOne({ where: { slug } });
     if (!brand) throw new NotFoundException('Brand not found');
-    // Find products by brandId (MongoDB _id)
     const products = await this.productService.findByBrandIds([
       brand.id?.toString?.() ?? String(brand.id),
     ]);
     return products || [];
   }
 
-  async update(id: string | ObjectId, dto: UpdateBrandDto) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
+  async update(id: string, dto: UpdateBrandDto) {
     const data: UpdateBrandDto & { slug?: string } = { ...dto };
     if (dto.name) {
       data.slug = dto.name.toLowerCase().replace(/\s+/g, '-');
     }
-    await this.brandRepository.update(_id, data);
-    const brand = await this.brandRepository.findOne({ where: { _id } } as any);
+    await this.brandRepository.update({ id }, data);
+    const brand = await this.brandRepository.findOne({ where: { id } });
     if (!brand) throw new NotFoundException('Brand not found');
     return {
       id: brand.id?.toString?.() ?? String(brand.id),
@@ -109,9 +97,8 @@ export class BrandsService {
     };
   }
 
-  async remove(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
-    await this.brandRepository.delete(_id);
+  async remove(id: string) {
+    await this.brandRepository.delete({ id });
     return { success: true };
   }
 

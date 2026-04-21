@@ -1,23 +1,22 @@
 import {
   Entity,
-  ObjectIdColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
   Index,
 } from 'typeorm';
-import { ObjectId } from 'mongodb';
 import { Product } from './product-new.entity';
 
 @Entity('product_specifications')
-@Index(['productId', 'specKey'], { unique: true, sparse: true })
+@Index(['productId', 'specKey'], { unique: true })
 export class ProductSpecification {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column()
-  productId: ObjectId;
+  @Column({ type: 'uuid' })
+  productId: string;
 
   @Column()
   specKey: string;
@@ -29,7 +28,8 @@ export class ProductSpecification {
   displayOrder: number;
 
   // Relations
-  @ManyToOne(() => Product, (product) => product.specifications)
+  @ManyToOne(() => Product, (product) => product.specifications, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'productId' })
   product: Product;
 
   @CreateDateColumn()

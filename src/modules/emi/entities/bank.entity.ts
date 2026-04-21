@@ -1,12 +1,11 @@
-import { Entity, ObjectIdColumn, Column, OneToMany } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 
 import { Emi } from './emi.entity';
 
 @Entity('banks')
 export class Bank {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ unique: true })
   bankname: string;

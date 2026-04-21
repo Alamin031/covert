@@ -11,7 +11,6 @@ import { Role } from '../roles/role.entity';
 import { RegisterDto } from './dto/register.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { Repository, DeepPartial } from 'typeorm';
-import { ObjectId } from 'mongodb';
 
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -232,11 +231,7 @@ export class AuthService {
     oldPassword: string,
     newPassword: string,
   ) {
-    const objectId = new ObjectId(userId);
-    let user = await this.userRepo.findOne({ where: { id: objectId } });
-    if (!user) {
-      user = await this.userRepo.findOne({ where: { _id: objectId } } as any);
-    }
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     if (!user.password)
       throw new BadRequestException('No password set for this user');

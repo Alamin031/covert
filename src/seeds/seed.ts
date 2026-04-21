@@ -13,7 +13,6 @@ import { PolicyPage } from '../modules/policies/entities/policy.entity';
 import { WarrantyRecord } from '../modules/warranty/entities/warrantyrecord.entity';
 import { HomeCategory } from '../modules/homecategory/entities/homecategory.entity';
 import { HeroBanner } from '../modules/herobanner/entities/herobanner.entity';
-import { ObjectId } from 'mongodb';
 
 import { faker } from '@faker-js/faker';
 import AppDataSource from '../config/data-source';
@@ -23,7 +22,7 @@ async function seed() {
     await AppDataSource.initialize();
 
     // Brands
-    const brandRepo = AppDataSource.getMongoRepository(Brand);
+    const brandRepo = AppDataSource.getRepository(Brand);
     const brands = Array.from({ length: 5 }, () => brandRepo.create({
         name: faker.company.name(),
         slug: faker.helpers.slugify(faker.company.name()).toLowerCase(),
@@ -32,7 +31,7 @@ async function seed() {
     await brandRepo.save(brands);
 
     // Categories (guarantee unique names)
-    const categoryRepo = AppDataSource.getMongoRepository(Category);
+    const categoryRepo = AppDataSource.getRepository(Category);
     const categoryNames = new Set<string>();
     const categories: Category[] = [];
     while (categories.length < 5) {
@@ -50,7 +49,7 @@ async function seed() {
     await categoryRepo.save(categories);
 
     // Users
-    const userRepo = AppDataSource.getMongoRepository(User);
+    const userRepo = AppDataSource.getRepository(User);
     const users = Array.from({ length: 10 }, () => userRepo.create({
         name: faker.person.fullName(),
         email: faker.internet.email(),
@@ -63,14 +62,14 @@ async function seed() {
     await userRepo.save(users);
 
     // Products (using old Product entity - skip for now as it's being replaced)
-    const productRepo = AppDataSource.getMongoRepository(Product);
+    const productRepo = AppDataSource.getRepository(Product);
     const products: Product[] = [];
     
     console.log('Skipping product seeding - using new product architecture');
     // Products will be created via the new API endpoints instead
 
     // Orders
-    const orderRepo = AppDataSource.getMongoRepository(Order);
+    const orderRepo = AppDataSource.getRepository(Order);
     const orders = Array.from({ length: 5 }, () => orderRepo.create({
         customer: { name: faker.person.fullName(), phone: faker.phone.number() },
         orderItems: [],
@@ -83,7 +82,7 @@ async function seed() {
 
     // Order Items (skip if no products)
     if (products.length > 0) {
-        const orderItemRepo = AppDataSource.getMongoRepository(OrderItem);
+        const orderItemRepo = AppDataSource.getRepository(OrderItem);
         const orderItems = Array.from({ length: 10 }, () => orderItemRepo.create({
             productName: faker.commerce.productName(),
             price: faker.number.int({ min: 100, max: 1000 }),
@@ -104,7 +103,7 @@ async function seed() {
 
     // Reviews (skip if no products)
     if (products.length > 0) {
-        const reviewRepo = AppDataSource.getMongoRepository(Review);
+        const reviewRepo = AppDataSource.getRepository(Review);
         const reviews = Array.from({ length: 10 }, () => reviewRepo.create({
             userId: users[faker.number.int({ min: 0, max: users.length - 1 })].id.toString(),
             productId: products[faker.number.int({ min: 0, max: products.length - 1 })].id.toString(),
@@ -115,7 +114,7 @@ async function seed() {
     }
 
     // Notifications
-    const notificationRepo = AppDataSource.getMongoRepository(Notification);
+    const notificationRepo = AppDataSource.getRepository(Notification);
     const notifications = Array.from({ length: 10 }, () => notificationRepo.create({
         userId: users[faker.number.int({ min: 0, max: users.length - 1 })].id.toString(),
         type: faker.helpers.arrayElement(Object.values(NotificationType)),
@@ -127,7 +126,7 @@ async function seed() {
     await notificationRepo.save(notifications);
 
     // FAQs (each FAQ can belong to multiple products)
-    const faqRepo = AppDataSource.getMongoRepository(FAQ);
+    const faqRepo = AppDataSource.getRepository(FAQ);
     const faqs = Array.from({ length: 5 }, () => {
         // Randomly assign 1-3 products to each FAQ (skip if no products)
         const uniqueProductIds = products.length > 0 
@@ -148,7 +147,7 @@ async function seed() {
     // Note: This is skipped since we're using the new product architecture
 
     // Giveaway Entries
-    const giveawayEntryRepo = AppDataSource.getMongoRepository(GiveawayEntry);
+    const giveawayEntryRepo = AppDataSource.getRepository(GiveawayEntry);
     const giveawayEntries = Array.from({ length: 5 }, () => giveawayEntryRepo.create({
         name: faker.person.fullName(),
         phone: faker.phone.number(),
@@ -158,7 +157,7 @@ async function seed() {
     await giveawayEntryRepo.save(giveawayEntries);
 
     // Loyalty Points
-    const loyaltyRepo = AppDataSource.getMongoRepository(LoyaltyPoints);
+    const loyaltyRepo = AppDataSource.getRepository(LoyaltyPoints);
     const loyaltyPoints = users.map((user) => loyaltyRepo.create({
         userId: user.id.toString(),
         points: faker.number.int({ min: 0, max: 1000 }),
@@ -167,7 +166,7 @@ async function seed() {
     await loyaltyRepo.save(loyaltyPoints);
 
     // Policy Pages
-    const policyRepo = AppDataSource.getMongoRepository(PolicyPage);
+    const policyRepo = AppDataSource.getRepository(PolicyPage);
     const policies = Array.from({ length: 3 }, (_, i) => policyRepo.create({
         slug: faker.helpers.slugify(faker.lorem.words(2)).toLowerCase(),
         title: faker.lorem.words(3),
@@ -180,7 +179,7 @@ async function seed() {
 
     // Warranty Records (skip if no products)
     if (products.length > 0) {
-        const warrantyRepo = AppDataSource.getMongoRepository(WarrantyRecord);
+        const warrantyRepo = AppDataSource.getRepository(WarrantyRecord);
         const warrantyRecords = Array.from({ length: 5 }, () => warrantyRepo.create({
             productId: products[faker.number.int({ min: 0, max: products.length - 1 })].id.toString(),
             imei: faker.string.numeric(15),
@@ -196,7 +195,7 @@ async function seed() {
     }
 
     // Home Categories
-    const homeCategoryRepo = AppDataSource.getMongoRepository(HomeCategory);
+    const homeCategoryRepo = AppDataSource.getRepository(HomeCategory);
     const homeCategories = Array.from({ length: 3 }, () => homeCategoryRepo.create({
         name: faker.commerce.department(),
         priority: faker.number.int({ min: 1, max: 10 }),
@@ -206,7 +205,7 @@ async function seed() {
     await homeCategoryRepo.save(homeCategories);
 
     // Hero Banners
-    const heroBannerRepo = AppDataSource.getMongoRepository(HeroBanner);
+    const heroBannerRepo = AppDataSource.getRepository(HeroBanner);
     const heroBanners = Array.from({ length: 3 }, () => heroBannerRepo.create({
         img: faker.image.url(),
     }));

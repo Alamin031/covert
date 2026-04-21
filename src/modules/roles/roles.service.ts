@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DeepPartial } from 'typeorm';
 import { Role } from './role.entity';
 import { User } from '../users/entities/user.entity';
-import { ObjectId } from 'mongodb';
 import { Permission } from '../../common/enums/permission.enum';
 
 @Injectable()
@@ -25,12 +24,7 @@ export class RolesService {
   }
 
   async findOne(id: string) {
-    const objectId = new ObjectId(id);
-    // Try both `id` and `_id` lookups for Mongo compatibility
-    let role = await this.roleRepo.findOne({ where: { id: objectId } as any } as any);
-    if (!role) {
-      role = await this.roleRepo.findOne({ where: { _id: objectId } as any } as any);
-    }
+    const role = await this.roleRepo.findOne({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
     return role;
   }
@@ -48,8 +42,7 @@ export class RolesService {
 
   async assignRoleToUser(roleId: string, userId: string) {
     const role = await this.findOne(roleId);
-    const uId = new ObjectId(userId);
-    let user = await this.userRepo.findOne({ where: { id: uId } as any } as any);
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     // persist roleId, role name, and update isAdmin flag
     (user as any).roleId = role.id;

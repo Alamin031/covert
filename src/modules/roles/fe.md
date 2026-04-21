@@ -117,7 +117,7 @@ function AdminSettingsPage() {
   }
 
   async function handleEditRole(role: any) {
-    setEditingRoleId(role.id || role._id || null);
+    setEditingRoleId(role.id || null);
     setRoleForm({ name: role.name || '', permissions: role.permissions || [] });
     setActiveTab('roles');
   }
@@ -484,14 +484,14 @@ function AdminSettingsPage() {
               <div className="space-y-2">
                 {rolesLoading ? <div>Loading roles...</div> : (
                   roles.map((r) => (
-                    <div key={r.id || r._id} className="p-3 border rounded flex items-center justify-between">
+                    <div key={r.id} className="p-3 border rounded flex items-center justify-between">
                       <div>
                         <div className="font-semibold">{r.name}</div>
                         <div className="text-sm text-muted-foreground">{Array.isArray(r.permissions) ? r.permissions.join(', ') : '-'}</div>
                       </div>
                       <div className="flex gap-2">
                         <button className="px-2 py-1 bg-yellow-100 rounded" onClick={() => handleEditRole(r)}>Edit</button>
-                        <button className="px-2 py-1 bg-red-100 rounded" onClick={() => handleDeleteRole(r.id || r._id)}>Delete</button>
+                        <button className="px-2 py-1 bg-red-100 rounded" onClick={() => handleDeleteRole(r.id)}>Delete</button>
                       </div>
                     </div>
                   ))

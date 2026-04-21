@@ -8,7 +8,6 @@ import { Repository, In } from 'typeorm';
 import { ActivateWarrantyDto, WarrantyLookupDto } from './dto/warranty.dto';
 import { WarrantyRecord } from './entities/warrantyrecord.entity';
 import { WarrantyLog } from './entities/warrantylog.entity';
-import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class WarrantyService {
@@ -175,7 +174,7 @@ export class WarrantyService {
       let deleted = 0;
       for (const id of toRemoveIds) {
         try {
-          await this.logRepo.delete({ id: new ObjectId(String(id)) });
+          await this.logRepo.delete({ id: String(id) });
           deleted++;
         } catch (e) {
           // ignore deletion failures for individual logs
@@ -197,26 +196,13 @@ export class WarrantyService {
   }
 
   async deleteLog(id: string, adminUsername?: string) {
-    // Some documents may be stored with the primary key mapped as either `id`
-    // or `_id` depending on how TypeORM handled the ObjectId at insert time.
-    // To be robust, try both shapes and then delete by the raw ObjectId like
-    // other Mongo-backed services in this codebase (e.g. PoliciesService).
-    const objectId = new ObjectId(id);
-
-    let found = await this.logRepo.findOne({
-      where: { id: objectId } as any,
-    });
-    if (!found) {
-      found = await this.logRepo.findOne({
-        where: { _id: objectId } as any,
-      });
-    }
+    const found = await this.logRepo.findOne({ where: { id } });
 
     if (!found) {
       throw new NotFoundException('Log not found');
     }
 
-    await this.logRepo.delete(objectId as any);
+    await this.logRepo.delete({ id });
     return { success: true };
   }
 
@@ -246,15 +232,7 @@ export class WarrantyService {
     dto: Partial<ActivateWarrantyDto>,
     adminUsername?: string,
   ) {
-    const objectId = new ObjectId(id);
-    let warranty = await this.warrantyRepo.findOne({
-      where: { id: objectId } as any,
-    });
-    if (!warranty) {
-      warranty = await this.warrantyRepo.findOne({
-        where: { _id: objectId } as any,
-      } as any);
-    }
+    const warranty = await this.warrantyRepo.findOne({ where: { id } });
     if (!warranty) throw new NotFoundException('Warranty not found');
     Object.assign(warranty, dto);
     const saved = await this.warrantyRepo.save(warranty);
@@ -269,17 +247,9 @@ export class WarrantyService {
   }
 
   async delete(id: string, adminUsername?: string) {
-    const objectId = new ObjectId(id);
-    let warranty = await this.warrantyRepo.findOne({
-      where: { id: objectId } as any,
-    });
-    if (!warranty) {
-      warranty = await this.warrantyRepo.findOne({
-        where: { _id: objectId } as any,
-      } as any);
-    }
+    const warranty = await this.warrantyRepo.findOne({ where: { id } });
     if (!warranty) throw new NotFoundException('Warranty not found');
-    await this.warrantyRepo.delete(objectId as any);
+    await this.warrantyRepo.delete({ id });
     const log = this.logRepo.create({
       warrantyId: warranty.id ? String(warranty.id) : undefined,
       action: 'deleted',
@@ -290,10 +260,9 @@ export class WarrantyService {
     return { success: true };
   }
 
-  async getLogs(id: string | ObjectId) {
-    const _id = typeof id === 'string' ? new ObjectId(id) : id;
+  async getLogs(id: string) {
     const logs = await this.logRepo.find({
-      where: { warrantyId: String(_id) },
+      where: { warrantyId: id },
     });
     return logs;
   }

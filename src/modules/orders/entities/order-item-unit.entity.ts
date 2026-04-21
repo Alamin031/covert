@@ -1,18 +1,17 @@
-import { Entity, ObjectIdColumn, Column, CreateDateColumn } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 @Entity('order_item_units')
 export class OrderItemUnit {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   orderId: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   orderItemId: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   productId: string;
 
   @Column({ nullable: true })

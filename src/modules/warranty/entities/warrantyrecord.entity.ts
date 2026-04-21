@@ -1,10 +1,9 @@
-import { Entity, Column, CreateDateColumn, ObjectIdColumn } from 'typeorm';
-import { ObjectId } from 'mongodb';
+import { Entity, Column, CreateDateColumn, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('warrantyrecords')
 export class WarrantyRecord {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ nullable: true })
   productId?: string;

@@ -3,7 +3,6 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ObjectId } from 'mongodb';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../roles/role.entity';
 
@@ -30,15 +29,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<any> {
     // If token already contains permissions and isAdmin, use them
     if (payload.permissions) {
-      return { id: payload.sub, _id: payload.sub, sub: payload.sub, email: payload.email, role: payload.role, permissions: payload.permissions };
+      return { id: payload.sub, sub: payload.sub, email: payload.email, role: payload.role, permissions: payload.permissions };
     }
 
     // Otherwise, load user from DB to get latest permissions/isAdmin
     try {
-      const id = new ObjectId(payload.sub);
-      const user = await this.userRepo.findOne({ where: { id } as any } as any);
+      const user = await this.userRepo.findOne({ where: { id: payload.sub } });
       if (!user) {
-        return { id: payload.sub, _id: payload.sub, sub: payload.sub, email: payload.email, role: payload.role };
+        return { id: payload.sub, sub: payload.sub, email: payload.email, role: payload.role };
       }
       // Resolve role permissions from roles collection using stored role name
       let roleName = (user as any).role ?? payload.role;
@@ -49,7 +47,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
       return {
         id: user.id?.toString?.() ?? String(user.id),
-        _id: user.id?.toString?.() ?? String(user.id),
         sub: user.id?.toString?.() ?? String(user.id),
         email: user.email,
         role: roleName,
@@ -58,7 +55,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       };
     } catch (err) {
       // fallback
-      return { id: payload.sub, _id: payload.sub, sub: payload.sub, email: payload.email, role: payload.role };
+      return { id: payload.sub, sub: payload.sub, email: payload.email, role: payload.role };
     }
   }
 }

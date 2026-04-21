@@ -2,19 +2,16 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddProductSlugIndex1733300000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // MongoDB: Create unique index on slug field
     await queryRunner.query(`
-      db.products.createIndex(
-        { slug: 1 },
-        { unique: true, name: "idx_products_slug_unique" }
-      )
+      CREATE UNIQUE INDEX IF NOT EXISTS "idx_products_slug_unique"
+      ON "products" ("slug")
+      WHERE "slug" IS NOT NULL
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // MongoDB: Drop the unique index
     await queryRunner.query(`
-      db.products.dropIndex("idx_products_slug_unique")
+      DROP INDEX IF EXISTS "idx_products_slug_unique"
     `);
   }
 }

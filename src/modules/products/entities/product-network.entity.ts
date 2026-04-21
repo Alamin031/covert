@@ -1,25 +1,25 @@
 import {
   Entity,
-  ObjectIdColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   ManyToOne,
   OneToMany,
+  JoinColumn,
   Index,
 } from 'typeorm';
-import { ObjectId } from 'mongodb';
 import { Product } from './product-new.entity';
 import { ProductColor } from './product-color.entity';
 import { ProductStorage } from './product-storage.entity';
 
 @Entity('product_networks')
-@Index(['productId', 'networkType'], { unique: true, sparse: true })
+@Index(['productId', 'networkType'], { unique: true })
 export class ProductNetwork {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column()
-  productId: ObjectId;
+  @Column({ type: 'uuid' })
+  productId: string;
 
   @Column()
   networkType: string; // 'WiFi', 'WiFi+ Cellular', etc.
@@ -35,7 +35,8 @@ export class ProductNetwork {
   priceAdjustment?: number; // e.g., +5000 for cellular version
 
   // Relations
-  @ManyToOne(() => Product, (product) => product.networks)
+  @ManyToOne(() => Product, (product) => product.networks, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'productId' })
   product: Product;
 
   @OneToMany(() => ProductColor, (color) => color.network, { cascade: true })

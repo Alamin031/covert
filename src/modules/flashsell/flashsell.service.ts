@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/commo
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Flashsell } from './flashsell.entity';
-import { ObjectId } from 'mongodb';
 import { ProductService } from '../products/products.service';
 import { Product } from '../products/entities/product-new.entity';
 
@@ -24,18 +23,8 @@ export class FlashsellService {
     return await this.flashsellRepository.find();
   }
 
-  async findOne(id: string | ObjectId) {
-    let objectId: ObjectId;
-    if (typeof id === 'string') {
-      try {
-        objectId = new ObjectId(id);
-      } catch {
-        throw new NotFoundException('Invalid Flashsell id');
-      }
-    } else {
-      objectId = id;
-    }
-    const flashsell = await this.flashsellRepository.findOne({ where: { _id: objectId } } as any);
+  async findOne(id: string) {
+    const flashsell = await this.flashsellRepository.findOne({ where: { id } });
     if (!flashsell) throw new NotFoundException('Flashsell not found');
     let products: Product[] = [];
     let productIds: string[] = [];
@@ -54,35 +43,15 @@ export class FlashsellService {
     return { ...flashsell, products };
   }
 
-  async update(id: string | ObjectId, data: Partial<Flashsell>) {
-    let objectId: ObjectId;
-    if (typeof id === 'string') {
-      try {
-        objectId = new ObjectId(id);
-      } catch {
-        throw new NotFoundException('Invalid Flashsell id');
-      }
-    } else {
-      objectId = id;
-    }
-    const flashsell = await this.flashsellRepository.findOne({ where: { _id: objectId } } as any);
+  async update(id: string, data: Partial<Flashsell>) {
+    const flashsell = await this.flashsellRepository.findOne({ where: { id } });
     if (!flashsell) throw new NotFoundException('Flashsell not found');
     Object.assign(flashsell, data);
     return await this.flashsellRepository.save(flashsell);
   }
 
-  async remove(id: string | ObjectId) {
-    let objectId: ObjectId;
-    if (typeof id === 'string') {
-      try {
-        objectId = new ObjectId(id);
-      } catch {
-        throw new NotFoundException('Invalid Flashsell id');
-      }
-    } else {
-      objectId = id;
-    }
-    await this.flashsellRepository.delete(objectId);
+  async remove(id: string) {
+    await this.flashsellRepository.delete({ id });
     return { success: true };
   }
 }

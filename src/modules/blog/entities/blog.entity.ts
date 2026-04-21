@@ -2,14 +2,13 @@ import {
   Entity,
   Column,
   CreateDateColumn,
-  ObjectIdColumn,
-  ObjectId,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 
 @Entity('blogs')
 export class Blog {
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 255 })
   title: string;

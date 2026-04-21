@@ -72,10 +72,10 @@ export class ProductColor {
 @Entity('product_storages')
 export class ProductStorage {
   @Column({ nullable: true })
-  colorId?: ObjectId; // Null if this is a region default storage
+  colorId?: UUID string; // Null if this is a region default storage
   
   @Column({ nullable: true })
-  regionId?: ObjectId; // NEW: For region-level default storages
+  regionId?: UUID string; // NEW: For region-level default storages
   
   @ManyToOne(() => ProductRegion, (region) => region.defaultStorages, { nullable: true })
   region?: ProductRegion; // NEW: Link to region
